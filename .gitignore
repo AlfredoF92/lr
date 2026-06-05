@@ -1,0 +1,21 @@
+# WordPress — non versionare credenziali e file generati
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
+wp-content/backup*/
+wp-content/cache/
+wp-content/debug.log
+*.log
+.DS_Store
+Thumbs.db
+*.sql
+!database/*.sql
+node_modules/
+caricamento-online-script.md
+20260403_rewriteversion2_f815d9b9428c69a79270_20260601125058_archive/
+20260403_rewriteversion2_f815d9b9428c69a79270_20260601125058_archive.zip
+20260403_rewriteversion2_f815d9b9428c69a79270_20260601125058_installer-backup.php
+installer.php
+dup-installer/
+backup_20260419_204616.zip
+dup-installer-bootlog__f1b1c49-01125058.txt

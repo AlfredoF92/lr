@@ -1,0 +1,122 @@
+<?php
+/**
+ * Shortcode saluto utente / pulsante Accedi per header.
+ *
+ * @package LLM_Tabelle
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Class LLM_Header_User_Shortcode
+ */
+class LLM_Header_User_Shortcode {
+
+	const SHORTCODE = 'llm_header_user';
+
+	/**
+	 * Avvio hook.
+	 */
+	public static function init() {
+		add_shortcode( self::SHORTCODE, array( __CLASS__, 'render' ) );
+	}
+
+	/**
+	 * @param array<string, string>|string $atts Attributi shortcode.
+	 * @return string
+	 */
+	public static function render( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'login_path'    => '/login',
+				'account_path'  => '/area-personale',
+				'guest_path'    => '/',
+				'guest_label'   => 'Ciao!',
+				'login_label'   => '',
+				'greeting'      => '',
+			),
+			$atts,
+			self::SHORTCODE
+		);
+
+		wp_enqueue_style(
+			'llm-header-user',
+			LLM_TABELLE_URL . 'assets/llm-header-user.css',
+			array(),
+			LLM_TABELLE_VERSION
+		);
+
+		$account_path = self::normalize_path( (string) $atts['account_path'] );
+		$guest_path   = self::normalize_path( (string) $atts['guest_path'] );
+		$guest_url    = esc_url( home_url( $guest_path ) );
+		$account_url  = esc_url( home_url( $account_path ) );
+
+		$guest_label = trim( (string) $atts['guest_label'] );
+		if ( '' === $guest_label ) {
+			$guest_label = 'Ciao!';
+		}
+
+		$greeting_tpl = (string) $atts['greeting'];
+
+		if ( ! is_user_logged_in() ) {
+			return sprintf(
+				'<span class="llm-header-user"><a class="llm-header-user__login" href="%1$s"><span class="llm-header-user__icon">%3$s</span><span class="llm-header-user__text">%2$s</span></a></span>',
+				$guest_url,
+				esc_html( $guest_label ),
+				LLM_Header_UI_Icons::user() // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
+			);
+		}
+
+		$user = wp_get_current_user();
+		$name = ( $user && $user->exists() ) ? $user->display_name : '';
+		if ( $name === '' ) {
+			$name = $user->user_login;
+		}
+		$name = trim( (string) $name );
+		if ( $name === '' ) {
+			$name = __( 'Utente', 'llm-con-tabelle' );
+		}
+
+		if ( $greeting_tpl !== '' && strpos( $greeting_tpl, '%s' ) !== false ) {
+			$label = sprintf( $greeting_tpl, $name );
+		} else {
+			$ui_lang = class_exists( 'LLM_Category_Translations' )
+				? LLM_Category_Translations::current_user_lang()
+				: 'it';
+			$greetings = array(
+				'it' => 'Ciao, %s',
+				'en' => 'Hi, %s',
+				'pl' => 'Czesc, %s',
+				'es' => 'Hola, %s',
+			);
+			$tpl = isset( $greetings[ $ui_lang ] ) ? $greetings[ $ui_lang ] : $greetings['it'];
+			$label = sprintf( $tpl, $name );
+		}
+
+		return sprintf(
+			'<span class="llm-header-user"><a class="llm-header-user__account" href="%1$s"><span class="llm-header-user__icon">%3$s</span><span class="llm-header-user__text">%2$s</span></a></span>',
+			$account_url,
+			esc_html( $label ),
+			LLM_Header_UI_Icons::user() // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
+		);
+	}
+
+	/**
+	 * Percorso con slash iniziale.
+	 *
+	 * @param string $path Path.
+	 * @return string
+	 */
+	private static function normalize_path( $path ) {
+		$path = trim( $path );
+		if ( $path === '' ) {
+			return '/';
+		}
+		if ( $path[0] !== '/' ) {
+			return '/' . $path;
+		}
+		return $path;
+	}
+}
