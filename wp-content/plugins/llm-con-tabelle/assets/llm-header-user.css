@@ -157,6 +157,28 @@
 	text-decoration: none;
 }
 
+/* Coppia linguistica senza pagina storie configurata */
+.llm-stat-chip--unavailable,
+.llm-stat-chip--unavailable .llm-stat-chip__label,
+.llm-stat-chip--unavailable .llm-stat-chip__value {
+	color: #cbd5e1 !important;
+	opacity: 1;
+	cursor: default;
+	pointer-events: none;
+}
+
+.llm-stat-chip--unavailable .llm-header-icon,
+.llm-stat-chip--unavailable .llm-header-icon * {
+	opacity: 0.45;
+	stroke: #cbd5e1 !important;
+}
+
+.llm-stat-chip--unavailable:hover,
+.llm-stat-chip--unavailable:focus-visible {
+	opacity: 1;
+	text-decoration: none;
+}
+
 /* Mobile: testo e icone bianchi per i chip statistiche header */
 @media (max-width: 767px) {
 	.llm-stat-chip,
@@ -172,6 +194,19 @@
 	.llm-stat-chip .llm-header-icon * {
 		stroke: #fff !important;
 		fill: #fff !important;
+	}
+
+	.llm-stat-chip--unavailable,
+	.llm-stat-chip--unavailable .llm-stat-chip__label,
+	.llm-stat-chip--unavailable .llm-stat-chip__value {
+		color: rgba(255, 255, 255, 0.45) !important;
+	}
+
+	.llm-stat-chip--unavailable .llm-header-icon,
+	.llm-stat-chip--unavailable .llm-header-icon * {
+		stroke: rgba(255, 255, 255, 0.45) !important;
+		fill: none !important;
+		opacity: 1;
 	}
 }
 

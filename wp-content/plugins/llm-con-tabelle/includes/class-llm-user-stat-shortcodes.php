@@ -182,7 +182,6 @@ class LLM_User_Stat_Shortcodes {
 		$icon = LLM_Header_UI_Icons::library();
 
 		if ( ! is_user_logged_in() ) {
-			// Legge la coppia dai cookie impostati da [llm_lang_cards].
 			$known    = sanitize_key( wp_unslash( $_COOKIE['llm_interface_lang'] ?? '' ) );
 			$learning = sanitize_key( wp_unslash( $_COOKIE['llm_learning_lang'] ?? '' ) );
 			$chip_label = self::stories_in_label( $known );
@@ -190,7 +189,6 @@ class LLM_User_Stat_Shortcodes {
 			$known_valid    = LLM_Languages::is_valid( $known );
 			$learning_valid = LLM_Languages::is_valid( $learning );
 
-			// Determina testo da mostrare e URL destinazione.
 			if ( $known_valid && $learning_valid ) {
 				$display_label = strtoupper( $known ) . ' → ' . LLM_Languages::label( $learning );
 				$pair_url      = self::pair_url_for( $known, $learning );
@@ -199,24 +197,9 @@ class LLM_User_Stat_Shortcodes {
 				$pair_url      = '';
 			}
 
-			$dest      = '' !== $pair_url ? $pair_url : home_url( '/' );
-			$aria_full = trim( $chip_label . ' ' . $display_label );
-			$inner     = sprintf(
-				'<span class="llm-stat-chip__body"><span class="llm-stat-chip__label">%1$s</span><span class="llm-stat-chip__value">%2$s</span></span>',
-				esc_html( $chip_label ),
-				esc_html( $display_label )
-			);
-
-			return sprintf(
-				'<span class="llm-stat-chip-wrap"><a class="llm-stat-chip llm-stat-chip--guest llm-stat-chip--lang llm-stat-chip--kv" href="%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span>%4$s</a></span>',
-				esc_url( $dest ),
-				esc_attr( $aria_full ),
-				$icon, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
-				$inner
-			);
+			return self::render_learning_lang_chip( $icon, $chip_label, $display_label, $pair_url, true );
 		}
 
-		// Utente loggato.
 		$uid            = get_current_user_id();
 		$learning_code  = sanitize_key( (string) get_user_meta( $uid, LLM_User_Meta::LEARNING_LANG, true ) );
 		$interface_code = sanitize_key( (string) get_user_meta( $uid, LLM_User_Meta::INTERFACE_LANG, true ) );
@@ -242,7 +225,20 @@ class LLM_User_Stat_Shortcodes {
 			$pair_url      = '';
 		}
 
-		$dest      = '' !== $pair_url ? $pair_url : home_url( '/' );
+		return self::render_learning_lang_chip( $icon, $chip_label, $display_label, $pair_url, false );
+	}
+
+	/**
+	 * Chip "Storie in:" — link se la coppia ha pagina, altrimenti grigio e non cliccabile.
+	 *
+	 * @param string $icon          Markup SVG icona.
+	 * @param string $chip_label    Etichetta (es. "Storie in:").
+	 * @param string $display_label Valore (es. "IT → Polish").
+	 * @param string $pair_url      URL pagina coppia, '' se non disponibile.
+	 * @param bool   $is_guest      True se visitatore non loggato.
+	 * @return string
+	 */
+	private static function render_learning_lang_chip( $icon, $chip_label, $display_label, $pair_url, $is_guest ) {
 		$aria_full = trim( $chip_label . ' ' . $display_label );
 		$inner     = sprintf(
 			'<span class="llm-stat-chip__body"><span class="llm-stat-chip__label">%1$s</span><span class="llm-stat-chip__value">%2$s</span></span>',
@@ -250,9 +246,30 @@ class LLM_User_Stat_Shortcodes {
 			esc_html( $display_label )
 		);
 
+		if ( '' === $pair_url ) {
+			$classes = 'llm-stat-chip llm-stat-chip--lang llm-stat-chip--kv llm-stat-chip--static llm-stat-chip--unavailable';
+			if ( $is_guest ) {
+				$classes .= ' llm-stat-chip--guest';
+			}
+
+			return sprintf(
+				'<span class="llm-stat-chip-wrap"><span class="%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span>%4$s</span></span>',
+				esc_attr( $classes ),
+				esc_attr( $aria_full ),
+				$icon, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
+				$inner
+			);
+		}
+
+		$classes = 'llm-stat-chip llm-stat-chip--lang llm-stat-chip--kv';
+		if ( $is_guest ) {
+			$classes .= ' llm-stat-chip--guest';
+		}
+
 		return sprintf(
-			'<span class="llm-stat-chip-wrap"><a class="llm-stat-chip llm-stat-chip--lang llm-stat-chip--kv" href="%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span>%4$s</a></span>',
-			esc_url( $dest ),
+			'<span class="llm-stat-chip-wrap"><a class="%1$s" href="%2$s" aria-label="%3$s"><span class="llm-stat-chip__icon">%4$s</span>%5$s</a></span>',
+			esc_attr( $classes ),
+			esc_url( $pair_url ),
 			esc_attr( $aria_full ),
 			$icon, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
 			$inner
