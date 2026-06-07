@@ -29,6 +29,10 @@ class LLM_Login_Form_Shortcode {
 	 * Utente loggato su una pagina con [llm_login_form] → home per coppia linguistica.
 	 */
 	public static function maybe_redirect_logged_in_visitor() {
+		if ( ! LLM_Redirects::enabled() ) {
+			return;
+		}
+
 		if ( ! is_user_logged_in() || is_admin() ) {
 			return;
 		}
@@ -80,6 +84,9 @@ class LLM_Login_Form_Shortcode {
 			return;
 		}
 		if ( is_user_logged_in() ) {
+			if ( ! LLM_Redirects::enabled() ) {
+				return;
+			}
 			wp_safe_redirect( self::redirect_url_for_current_user() );
 			exit;
 		}
@@ -106,7 +113,11 @@ class LLM_Login_Form_Shortcode {
 			return;
 		}
 
-		wp_safe_redirect( self::redirect_url_for_user( $user ) );
+		wp_safe_redirect(
+			LLM_Redirects::enabled()
+				? self::redirect_url_for_user( $user )
+				: ( wp_get_referer() ? wp_get_referer() : home_url( '/' ) )
+		);
 		exit;
 	}
 
@@ -133,6 +144,10 @@ class LLM_Login_Form_Shortcode {
 		$lang = LLM_User_Settings_I18n::lang();
 
 		if ( is_user_logged_in() ) {
+			if ( ! LLM_Redirects::enabled() ) {
+				return '';
+			}
+
 			/* Fallback se template_redirect non ha potuto reindirizzare (es. output già avviato). */
 			$url = self::redirect_url_for_current_user();
 			if ( ! headers_sent() ) {

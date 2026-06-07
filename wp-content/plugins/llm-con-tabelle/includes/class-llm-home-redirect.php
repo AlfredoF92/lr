@@ -38,6 +38,10 @@ class LLM_Home_Redirect {
 	 * @return string
 	 */
 	public static function render( $atts ) {
+		if ( ! LLM_Redirects::enabled() ) {
+			return '';
+		}
+
 		$atts = shortcode_atts(
 			array(),
 			$atts,
@@ -66,6 +70,11 @@ class LLM_Home_Redirect {
 
 		// Nessuna pagina configurata per questa coppia: non fare nulla.
 		if ( '' === $pair_url ) {
+			return '';
+		}
+
+		// Già sulla pagina di destinazione: evita loop di redirect.
+		if ( self::is_current_url( $pair_url ) ) {
 			return '';
 		}
 
@@ -100,5 +109,28 @@ class LLM_Home_Redirect {
 
 		$permalink = get_permalink( $page_id );
 		return $permalink ? (string) $permalink : '';
+	}
+
+	/**
+	 * True se l'URL richiesto corrisponde all'URL assoluto (path + query + host).
+	 *
+	 * @param string $url URL assoluto.
+	 * @return bool
+	 */
+	private static function is_current_url( $url ) {
+		$url = (string) $url;
+		if ( '' === $url ) {
+			return false;
+		}
+
+		$current = ( is_ssl() ? 'https://' : 'http://' );
+		if ( isset( $_SERVER['HTTP_HOST'] ) ) {
+			$current .= wp_unslash( $_SERVER['HTTP_HOST'] );
+		}
+		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+			$current .= wp_unslash( $_SERVER['REQUEST_URI'] );
+		}
+
+		return untrailingslashit( strtolower( $url ) ) === untrailingslashit( strtolower( $current ) );
 	}
 }

@@ -90,6 +90,10 @@ class LLM_Frontend_Auth {
 	 * @return string
 	 */
 	public static function login_redirect( $redirect_to, $requested_redirect_to, $user ) {
+		if ( ! LLM_Redirects::enabled() ) {
+			return $redirect_to;
+		}
+
 		if ( $user instanceof WP_Error ) {
 			return $redirect_to;
 		}
@@ -110,6 +114,10 @@ class LLM_Frontend_Auth {
 	 * @return string
 	 */
 	public static function logout_redirect( $redirect_to, $requested_redirect_to, $user ) {
+		if ( ! LLM_Redirects::enabled() ) {
+			return $redirect_to;
+		}
+
 		unset( $redirect_to, $requested_redirect_to, $user );
 		return self::after_logout_url();
 	}
@@ -118,6 +126,10 @@ class LLM_Frontend_Auth {
 	 * Utente già loggato sulla pagina login → home per coppia linguistica.
 	 */
 	public static function maybe_redirect_logged_in_from_login() {
+		if ( ! LLM_Redirects::enabled() ) {
+			return;
+		}
+
 		if ( ! is_user_logged_in() || is_admin() ) {
 			return;
 		}
@@ -159,6 +171,10 @@ class LLM_Frontend_Auth {
 	 * Accesso wp-admin / wp-login con redirect_to admin resta disponibile.
 	 */
 	public static function maybe_redirect_wp_login() {
+		if ( ! LLM_Redirects::enabled() ) {
+			return;
+		}
+
 		if ( is_admin() ) {
 			return;
 		}
