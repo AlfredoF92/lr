@@ -33,6 +33,9 @@ class LLM_Lang_Cards_Shortcode {
 	const COOKIE_LEARNING = 'llm_learning_lang';
 	const COOKIE_DAYS     = 30;
 
+	/** ID sezione homepage per link anchor (es. [llm_login_form] "Imposta la tua lingua"). */
+	const SECTION_ANCHOR = 'llm-lang-cards';
+
 	public static function init() {
 		add_shortcode( self::SHORTCODE, array( __CLASS__, 'render' ) );
 		add_action( 'init', array( __CLASS__, 'maybe_handle_form' ), 5 );
@@ -127,6 +130,15 @@ class LLM_Lang_Cards_Shortcode {
 		exit;
 	}
 
+	/**
+	 * URL homepage con anchor alla sezione card.
+	 *
+	 * @return string
+	 */
+	public static function section_url() {
+		return home_url( '/' ) . '#' . self::SECTION_ANCHOR;
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Render                                                               */
 	/* ------------------------------------------------------------------ */
@@ -159,7 +171,7 @@ class LLM_Lang_Cards_Shortcode {
 
 		ob_start();
 		?>
-		<div class="llm-lang-cards" data-known="<?php echo esc_attr( $known_lang ); ?>">
+		<div id="<?php echo esc_attr( self::SECTION_ANCHOR ); ?>" class="llm-lang-cards" data-known="<?php echo esc_attr( $known_lang ); ?>">
 
 			<?php /* ---- Selettore lingua conosciuta ---- */ ?>
 			<form class="llm-lang-cards__form" method="post" action="">

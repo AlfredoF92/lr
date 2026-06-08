@@ -144,19 +144,7 @@ class LLM_Login_Form_Shortcode {
 		$lang = LLM_User_Settings_I18n::lang();
 
 		if ( is_user_logged_in() ) {
-			if ( ! LLM_Redirects::enabled() ) {
-				return '';
-			}
-
-			/* Fallback se template_redirect non ha potuto reindirizzare (es. output già avviato). */
-			$url = self::redirect_url_for_current_user();
-			if ( ! headers_sent() ) {
-				wp_safe_redirect( $url );
-				exit;
-			}
-			$encoded = wp_json_encode( $url );
-			return '<script>window.location.replace(' . $encoded . ');</script>'
-				. '<noscript><meta http-equiv="refresh" content="0;url=' . esc_attr( $url ) . '"></noscript>';
+			return self::render_continua_btn();
 		}
 
 		$error = self::$last_error;
@@ -207,6 +195,105 @@ class LLM_Login_Form_Shortcode {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Pulsante "Continua con le storie in IT → Polacco" per utente loggato.
+	 *
+	 * @return string
+	 */
+	private static function render_continua_btn() {
+		wp_enqueue_style(
+			'llm-lang-cards',
+			LLM_TABELLE_URL . 'assets/llm-lang-cards.css',
+			array(),
+			LLM_TABELLE_VERSION
+		);
+
+		$uid       = get_current_user_id();
+		$known     = sanitize_key( (string) get_user_meta( $uid, LLM_User_Meta::INTERFACE_LANG, true ) );
+		$learning  = sanitize_key( (string) get_user_meta( $uid, LLM_User_Meta::LEARNING_LANG, true ) );
+
+		$known_ok    = LLM_Languages::is_valid( $known );
+		$learning_ok = LLM_Languages::is_valid( $learning );
+
+		// Coppia configurata: pulsante cliccabile.
+		if ( $known_ok && $learning_ok && $known !== $learning ) {
+			$pair_url = class_exists( 'LLM_Home_Redirect' ) ? LLM_Home_Redirect::pair_url( $known, $learning ) : '';
+
+			if ( '' !== $pair_url ) {
+				$label = self::continua_label( $known, $learning );
+				return self::render_continua_button_markup( $pair_url, $label );
+			}
+		}
+
+		// Coppia non configurata: "Imposta la tua lingua" → sezione card in homepage.
+		$settings_url = class_exists( 'LLM_Lang_Cards_Shortcode' )
+			? LLM_Lang_Cards_Shortcode::section_url()
+			: home_url( '/#llm-lang-cards' );
+		$label        = self::imposta_label( $known );
+
+		return self::render_continua_button_markup( $settings_url, $label );
+	}
+
+	/**
+	 * Markup pulsante Continua (button, non link).
+	 *
+	 * @param string $url   Destinazione.
+	 * @param string $label Testo pulsante.
+	 * @return string
+	 */
+	private static function render_continua_button_markup( $url, $label ) {
+		return sprintf(
+			'<form class="llm-login-form llm-login-form--continua" action="%1$s" method="get">'
+			. '<button type="submit" class="llm-lang-cards__card-btn">%2$s</button>'
+			. '</form>',
+			esc_url( $url ),
+			esc_html( $label )
+		);
+	}
+
+	/**
+	 * Testo del pulsante Continua in base alla coppia linguistica.
+	 *
+	 * @param string $known    Codice lingua conosciuta.
+	 * @param string $learning Codice lingua da imparare.
+	 * @return string
+	 */
+	private static function continua_label( $known, $learning ) {
+		$known_upper    = strtoupper( $known );
+		$learning_names = array(
+			'it' => array( 'en' => 'Inglese', 'pl' => 'Polacco', 'es' => 'Spagnolo' ),
+			'en' => array( 'it' => 'Italian', 'pl' => 'Polish',  'es' => 'Spanish'  ),
+			'pl' => array( 'it' => 'Włoskiego', 'en' => 'Angielskiego', 'es' => 'Hiszpańskiego' ),
+			'es' => array( 'it' => 'Italiano', 'en' => 'Inglés', 'pl' => 'Polaco'   ),
+		);
+		$templates = array(
+			'it' => 'Continua con le storie in %s → %s',
+			'en' => 'Continue with stories in %s → %s',
+			'pl' => 'Kontynuuj z historiami w %s → %s',
+			'es' => 'Continúa con las historias en %s → %s',
+		);
+		$learning_name = $learning_names[ $known ][ $learning ] ?? strtoupper( $learning );
+		$template      = $templates[ $known ] ?? $templates['it'];
+
+		return sprintf( $template, $known_upper, $learning_name );
+	}
+
+	/**
+	 * Testo "Imposta la tua lingua" in base alla lingua conosciuta.
+	 *
+	 * @param string $known Codice lingua conosciuta.
+	 * @return string
+	 */
+	private static function imposta_label( $known ) {
+		$labels = array(
+			'it' => 'Imposta la tua lingua →',
+			'en' => 'Set your language →',
+			'pl' => 'Ustaw swój język →',
+			'es' => 'Configura tu idioma →',
+		);
+		return $labels[ $known ] ?? $labels['it'];
 	}
 
 	/**

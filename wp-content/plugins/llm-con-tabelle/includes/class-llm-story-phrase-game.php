@@ -158,8 +158,10 @@ class LLM_Story_Phrase_Game {
 						<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue1 button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
 					</div>
 				</div>
-				<div class="llm-phrase-game__message" role="alert"></div>
-				<div class="llm-phrase-game__analysis" hidden>
+			<div class="llm-phrase-game__message" role="alert"></div>
+			<div class="llm-phrase-game__phase1-feedback" hidden aria-live="polite"></div>
+			<div class="llm-phrase-game__loading-notes" hidden aria-live="polite"></div>
+			<div class="llm-phrase-game__analysis" hidden>
 					<div class="llm-phrase-game__your-phrase-wrap" hidden>
 						<p class="llm-phrase-game__your-phrase-label"><strong><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'your_phrase_label' ) ); ?></strong></p>
 						<p class="llm-phrase-game__your-phrase-text"></p>
@@ -325,7 +327,9 @@ class LLM_Story_Phrase_Game {
 				'translatePrompt'  => LLM_Phrase_Game_I18n::get( 'translate_prompt' ),
 				'rewritePrompt'    => LLM_Phrase_Game_I18n::get( 'rewrite_prompt' ),
 				'phase1Fail'       => LLM_Phrase_Game_I18n::get( 'phase1_fail' ),
-			'phase2Fail'       => LLM_Phrase_Game_I18n::get( 'phase2_fail' ),
+			'phase2Fail'       => ( class_exists( 'LLM_Admin_Phrase_Feedback' ) && '' !== LLM_Admin_Phrase_Feedback::get_fixed_string( 'phase2_fail', LLM_Phrase_Game_I18n::lang() ) )
+					? LLM_Admin_Phrase_Feedback::get_fixed_string( 'phase2_fail', LLM_Phrase_Game_I18n::lang() )
+					: LLM_Phrase_Game_I18n::get( 'phase2_fail' ),
 			'phase2Complete'   => LLM_Phrase_Game_I18n::get( 'phase2_complete' ),
 			'phase2StoryContinue' => LLM_Phrase_Game_I18n::get( 'phase2_story_continue' ),
 			'phase2Checking'   => LLM_Phrase_Game_I18n::get( 'phase2_checking' ),
@@ -346,6 +350,7 @@ class LLM_Story_Phrase_Game {
 			'micDenied'        => LLM_Phrase_Game_I18n::get( 'mic_denied' ),
 			'micUnavailable'   => LLM_Phrase_Game_I18n::get( 'mic_unavailable' ),
 			'micNoAudio'       => LLM_Phrase_Game_I18n::get( 'mic_no_audio' ),
+			'loadingNotes'     => LLM_Phrase_Game_I18n::get( 'loading_notes' ),
 			),
 			'gameFinished'        => $game_finished,
 			'savedPhraseIndex'    => $saved_phrase_ix,
@@ -362,6 +367,9 @@ class LLM_Story_Phrase_Game {
 				'phase2MinSimilar'   => self::PHASE2_MIN_SIMILAR,
 				'phase2MinWordRatio' => self::PHASE2_MIN_WORD_RATIO,
 			),
+			'feedback'            => class_exists( 'LLM_Admin_Phrase_Feedback' )
+				? LLM_Admin_Phrase_Feedback::get_for_lang( LLM_Phrase_Game_I18n::lang() )
+				: array(),
 			)
 		);
 	}

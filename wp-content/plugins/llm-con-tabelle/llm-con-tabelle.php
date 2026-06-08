@@ -80,6 +80,7 @@ require_once LLM_TABELLE_DIR . 'includes/class-llm-bravo-balance-shortcode.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-home-redirect.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-lang-cards-shortcode.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-home-redirect.php';
+require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-phrase-feedback.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-site-update-log-shortcodes.php';
 
 /**
@@ -145,6 +146,7 @@ function llm_tabelle_boot() {
 	LLM_Home_Redirect::init();
 	LLM_Lang_Cards_Shortcode::init();
 	LLM_Admin_Home_Redirect::init();
+	LLM_Admin_Phrase_Feedback::init();
 	LLM_Site_Update_Log_Shortcodes::init();
 }
 add_action( 'plugins_loaded', 'llm_tabelle_boot', 5 );

@@ -3,6 +3,7 @@
    ========================================================================== */
 
 .llm-lang-cards {
+	scroll-margin-top: 5rem;
 	font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	max-width: 1100px;
 	margin: 0 auto;

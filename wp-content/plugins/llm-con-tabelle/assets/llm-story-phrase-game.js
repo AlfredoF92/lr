@@ -202,6 +202,14 @@
 		return n.split(/\s+/).filter(Boolean);
 	}
 
+	/** Come tokenizeWords ma rimuove sempre gli accenti, indipendentemente da strictAccents. */
+	function tokenizeWordsNoAccents(s) {
+		var n = removeAccents(s.toLowerCase());
+		n = n.replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim();
+		if (!n) { return []; }
+		return n.split(/\s+/).filter(Boolean);
+	}
+
 	/** Allineato a PHP similar_text (somma caratteri comuni ricorsiva). */
 	function similarTextMatches(first, second) {
 		var pos1 = 0;
@@ -257,8 +265,8 @@
 	}
 
 	function referenceWordsFoundRatio(userText, referenceText) {
-		var refWords = tokenizeWords(referenceText);
-		var userWords = tokenizeWords(userText);
+		var refWords = tokenizeWordsNoAccents(referenceText);
+		var userWords = tokenizeWordsNoAccents(userText);
 		if (!refWords.length) {
 			return 1;
 		}
@@ -355,6 +363,8 @@
 		var listenTargetBtnPhase2 = qs(root, '.llm-phrase-game__listen-target--phase2');
 		var composePhase1 = qs(root, '.llm-phrase-game__compose--phase1');
 		var composePhase2 = qs(root, '.llm-phrase-game__compose--phase2');
+	var feedbackEl      = qs(root, '.llm-phrase-game__phase1-feedback');
+	var loadingNotesEl  = qs(root, '.llm-phrase-game__loading-notes');
 
 		/* Intro storia: typewriter alla prima visita — blocca pulsante ascolto fino al termine */
 		var pendingStoryIntroTypewriter =
@@ -1432,9 +1442,79 @@
 		bindMic(mic1, input1);
 		bindMic(mic2, input2);
 
-		var phase1WarnActive = false;
+	/* Flag: feedback 0% già mostrato — secondo click bypassa alla fase 2 */
+	var feedbackWarnActive = false;
 
-		function syncClearInputVisibility(textarea, clearBtn) {
+	/* ── Feedback Fase 1 ─────────────────────────────────────────────────── */
+
+	function pctToTier(pct) {
+		if (pct >= 100) { return '100'; }
+		if (pct > 60)   { return 'gt60lt90'; }
+		if (pct > 50)   { return 'gt50'; }
+		if (pct > 0)    { return 'gt0'; }
+		return '0';
+	}
+
+	function pickRandom(arr) {
+		if (!arr || !arr.length) { return ''; }
+		return arr[Math.floor(Math.random() * arr.length)] || '';
+	}
+
+	function getFeedbackTexts(pctOrTier) {
+		var feedbackCfg = cfg.feedback || {};
+		/* Se è una stringa non numerica è già un tier key (es. 'double_click') */
+		var tier = (typeof pctOrTier === 'string' && isNaN(Number(pctOrTier)))
+			? pctOrTier
+			: pctToTier(Number(pctOrTier));
+		var tierData = feedbackCfg[tier] || {};
+		return {
+			p1: pickRandom(tierData.p1 || []),
+			p2: pickRandom(tierData.p2 || []),
+		};
+	}
+
+	function showPhase1Feedback(pct) {
+		var texts   = getFeedbackTexts(pct);
+		var full    = [texts.p1, texts.p2].filter(Boolean).join(' ');
+		// Percentuale visibile solo in console (debug)
+		console.log('[LLM Phase1] %c' + pct + '%', 'font-weight:bold', '| tier:', pctToTier(pct), '| p1:', texts.p1, '| p2:', texts.p2);
+		if (!feedbackEl || !full) { return Promise.resolve(); }
+		feedbackEl.textContent = '';
+		feedbackEl.hidden = false;
+		return typewriterInto(feedbackEl, full, function () { return true; });
+	}
+
+	function hidePhase1Feedback() {
+		if (!feedbackEl) { return; }
+		feedbackEl.hidden = true;
+		feedbackEl.textContent = '';
+		feedbackWarnActive = false;
+	}
+
+	function showLoadingNotes() {
+		if (!loadingNotesEl) { return Promise.resolve(); }
+		loadingNotesEl.hidden = false;
+		loadingNotesEl.innerHTML = '';
+		var textSpan = document.createElement('span');
+		var dotsSpan = document.createElement('span');
+		dotsSpan.className = 'llm-phrase-game__loading-dots';
+		dotsSpan.innerHTML = '<span>.</span><span>.</span><span>.</span>';
+		dotsSpan.style.opacity = '0';
+		loadingNotesEl.appendChild(textSpan);
+		loadingNotesEl.appendChild(dotsSpan);
+		return typewriterInto(textSpan, i18n.loadingNotes || 'Carico gli appunti per questa frase', function () { return true; }).then(function () {
+			dotsSpan.style.transition = 'opacity 0.3s ease';
+			dotsSpan.style.opacity = '1';
+		});
+	}
+
+	function hideLoadingNotes() {
+		if (!loadingNotesEl) { return; }
+		loadingNotesEl.hidden = true;
+		loadingNotesEl.innerHTML = '';
+	}
+
+	function syncClearInputVisibility(textarea, clearBtn) {
 			if (!textarea || !clearBtn) {
 				return;
 			}
@@ -1462,12 +1542,10 @@
 			});
 		}
 
-		bindClearInput(clear1, input1, function () {
-			if (phase1WarnActive) {
-				setMessage('');
-				phase1WarnActive = false;
-			}
-		});
+	bindClearInput(clear1, input1, function () {
+		setMessage('');
+		hidePhase1Feedback();
+	});
 		bindClearInput(clear2, input2, function () {
 			if (messagePhase2El) {
 				setMessagePhase2('', '');
@@ -1671,7 +1749,8 @@
 
 	function loadPhrase(resumeStep2) {
 		micWordsThisPhrase = 0;
-		phase1WarnActive = false;
+		hidePhase1Feedback();
+		hideLoadingNotes();
 		cancelTts();
 		cancelAnalysisStream();
 			cancelStoryStream();
@@ -1819,52 +1898,108 @@
 				});
 		}
 
-		input1.addEventListener('input', function () {
-			if (phase1WarnActive) {
-				setMessage('');
-				phase1WarnActive = false;
-			}
-		});
+	input1.addEventListener('input', function () {
+		setMessage('');
+		hidePhase1Feedback();
+	});
 
-		btn1.addEventListener('click', function () {
-			stopSpeech();
-			cancelTts();
-			var txt = (input1.value || '').trim();
-			if (!txt) {
-				setMessage(i18n.empty || '', true);
-				return;
-			}
-			var p = phrases[phraseIx];
-			var targetRef = p && p.target != null ? String(p.target) : '';
-			var bypassPhase1 = false;
-			if (!phase1PassesLocal(txt, targetRef, PHASE1_MIN)) {
-				if (phase1WarnActive) {
-					/* Seconda pressione con feedback visibile: si procede comunque */
-					bypassPhase1 = true;
-					phase1WarnActive = false;
-				} else {
-					setMessage(i18n.phase1Fail || '', true);
-					phase1WarnActive = true;
-					return;
-				}
-			} else {
-				phase1WarnActive = false;
-			}
-			setMessage('');
-			setMessagePhase2('', '');
+	btn1.addEventListener('click', function () {
+		stopSpeech();
+		cancelTts();
+		var txt = (input1.value || '').trim();
+
+		/* ── Caso 1: campo vuoto ─────────────────────────────────────── */
+		if (!txt) {
+			hidePhase1Feedback();
+			feedbackWarnActive = false;
 			btn1.disabled = true;
-			if (btn2) {
-				btn2.disabled = true;
+			var emptyTexts = getFeedbackTexts('empty_input');
+			var emptyFull  = [emptyTexts.p1, emptyTexts.p2].filter(Boolean).join(' ');
+			console.log('[LLM Phase1] campo vuoto | p1:', emptyTexts.p1, '| p2:', emptyTexts.p2);
+			if (feedbackEl && emptyFull) {
+				feedbackEl.textContent = '';
+				feedbackEl.hidden = false;
+				typewriterInto(feedbackEl, emptyFull, function () { return true; }).then(function () {
+					btn1.disabled = false;
+				});
+			} else {
+				setMessage(i18n.empty || '', true);
+				btn1.disabled = false;
 			}
-			if (input2) {
-				input2.readOnly = true;
-				input2.value = '';
+			return;
+		}
+
+		var p         = phrases[phraseIx];
+		var targetRef = p && p.target != null ? String(p.target) : '';
+		var ratio     = referenceWordsFoundRatio(txt, targetRef);
+		var pct       = Math.round(ratio * 100);
+
+		console.log('[LLM Phase1] %c' + pct + '%', 'font-weight:bold', '| tier:', pctToTier(pct) + ' | feedbackWarnActive:', feedbackWarnActive);
+
+		/* ── Caso 2: 0% e primo click ────────────────────────────────── */
+		if (pct === 0 && !feedbackWarnActive) {
+			hidePhase1Feedback();
+			btn1.disabled = true;
+			showPhase1Feedback(pct).then(function () {
+				btn1.disabled = false;
+				feedbackWarnActive = true;
+			});
+			return;
+		}
+
+	/* ── Caso 3: 0% e secondo click / Caso 4: >0% ───────────────────── */
+	/* bypassPhase1 = true sempre: la soglia è ora gestita lato JS con il
+	   feedback typewriter — il server non deve più bloccare o mostrare errori. */
+	var bypassPhase1 = true;
+
+	setMessage('');
+	setMessagePhase2('', '');
+	btn1.disabled = true;
+	if (btn2) { btn2.disabled = true; }
+	if (input2) { input2.readOnly = true; input2.value = ''; }
+
+	/* Avvia controllo server in parallelo (solo per registrare avanzamento) */
+	postCheck(1, txt, false, function (json) {
+		btn1.disabled = false;
+		/* Mostra solo errori di rete reali, non validazioni fase 1 */
+		if (!json) {
+			setMessage(i18n.ajaxError || '', true);
+		}
+	}, bypassPhase1);
+
+		prepareAnalysisStreamLayout();
+		setComposePhaseVisible(2, false);
+		showPhase(2);
+
+		/* Scegli tier feedback:
+		   - secondo click a 0% (feedbackWarnActive era true) → double_click
+		   - tutti gli altri casi (>0%) → tier normale */
+		var isDoubleClick = (pct === 0 && feedbackWarnActive);
+		var feedbackPromise;
+		if (isDoubleClick) {
+			var dcTexts = getFeedbackTexts('double_click');
+			var dcFull  = [dcTexts.p1, dcTexts.p2].filter(Boolean).join(' ');
+			console.log('[LLM Phase1] double_click | p1:', dcTexts.p1, '| p2:', dcTexts.p2);
+			hidePhase1Feedback();
+			if (feedbackEl && dcFull) {
+				feedbackEl.textContent = '';
+				feedbackEl.hidden = false;
+				feedbackPromise = typewriterInto(feedbackEl, dcFull, function () { return true; });
+			} else {
+				feedbackPromise = Promise.resolve();
 			}
-			/* Stesso stato che runAnalysisTypestream applica subito: altrimenti, finché non parte lo stream (es. dopo lo scroll), le etichette statiche in analisi resterebbero visibili un attimo. */
-			prepareAnalysisStreamLayout();
-			setComposePhaseVisible(2, false);
+		} else {
+			feedbackPromise = showPhase1Feedback(pct);
+		}
+
+		feedbackWarnActive = false;
+
+		feedbackPromise.then(function () {
+			return showLoadingNotes();
+		}).then(function () {
+			return sleepMs(3000);
+		}).then(function () {
 			analysisEl.hidden = false;
-			showPhase(2);
 			requestAnimationFrame(function () {
 				requestAnimationFrame(function () {
 					smoothScrollIntoCenter(analysisEl).then(function () {
@@ -1877,30 +2012,8 @@
 					});
 				});
 			});
-			postCheck(1, txt, false, function (json) {
-				btn1.disabled = false;
-				if (!json || !json.success) {
-					cancelAnalysisStream();
-					cancelPhraseIntro();
-					resetAnalysis();
-					showPhase(1);
-					var prb = phrases[phraseIx];
-					if (ifaceEl) {
-						ifaceEl.innerHTML = String(prb ? prb.interface || '' : '');
-					}
-					if (promptTrans) {
-						promptTrans.textContent = t('translatePrompt', targetLang);
-					}
-					setComposePhaseVisible(1, true);
-					setMessagePhase2('', '');
-					setMessage(
-						(json && json.data && json.data.message) || i18n.ajaxError || '',
-						true
-					);
-					return;
-				}
-			}, bypassPhase1);
 		});
+	});
 
 		btn2.addEventListener('click', function () {
 			stopSpeech();

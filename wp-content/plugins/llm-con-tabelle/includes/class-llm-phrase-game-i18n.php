@@ -150,6 +150,7 @@ class LLM_Phrase_Game_I18n {
 			'mic_unavailable'       => 'Microfono non disponibile sul dispositivo.',
 			'mic_no_audio'          => 'Nessun audio rilevato. Riprova.',
 			'clear_input'           => 'Ricomincia da capo',
+			'loading_notes'         => 'Carico gli appunti per questa frase',
 		),
 		'en' => array(
 				'lang_names'            => $names_en,
@@ -198,6 +199,7 @@ class LLM_Phrase_Game_I18n {
 			'mic_unavailable'       => 'Microphone not available on this device.',
 			'mic_no_audio'          => 'No audio detected. Try again.',
 			'clear_input'           => 'Start over',
+			'loading_notes'         => 'Loading the notes for this phrase',
 		),
 		'pl' => array(
 				'lang_names'            => $names_pl,
@@ -246,6 +248,7 @@ class LLM_Phrase_Game_I18n {
 			'mic_unavailable'       => 'Mikrofon niedostępny na tym urządzeniu.',
 			'mic_no_audio'          => 'Nie wykryto dźwięku. Spróbuj ponownie.',
 			'clear_input'           => 'Zacznij od nowa',
+			'loading_notes'         => 'Ładuję notatki do tego zdania',
 		),
 		'es' => array(
 				'lang_names'            => $names_es,
@@ -294,6 +297,7 @@ class LLM_Phrase_Game_I18n {
 			'mic_unavailable'       => 'Micrófono no disponible en este dispositivo.',
 			'mic_no_audio'          => 'No se detectó audio. Inténtalo de nuevo.',
 			'clear_input'           => 'Empezar de nuevo',
+			'loading_notes'         => 'Cargando las notas de esta frase',
 		),
 	);
 
