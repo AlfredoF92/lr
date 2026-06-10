@@ -34,6 +34,8 @@ class LLM_Story_Full_Import {
 		'FINALE',
 		'SCHEDA',
 		'CATEGORIA',
+		'LIVELLO_CEFR',
+		'TOPIC_GRAMMATICALI',
 	);
 
 	/**
@@ -380,16 +382,18 @@ class LLM_Story_Full_Import {
 		}
 
 		$form = array(
-			'title'           => ! empty( $meta['TITOLO'] ) ? sanitize_text_field( $meta['TITOLO'] ) : get_the_title( $post_id ),
-			'known_lang'      => isset( $meta['LINGUA_INTERFACCIA'] ) ? sanitize_key( $meta['LINGUA_INTERFACCIA'] ) : '',
-			'target_lang'     => isset( $meta['LINGUA_OBIETTIVO'] ) ? sanitize_key( $meta['LINGUA_OBIETTIVO'] ) : '',
-			'title_target'    => isset( $meta['TITOLO_OBIETTIVO'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TITOLO_OBIETTIVO'] ) : '',
-			'story_plot'      => isset( $meta['TRAMA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TRAMA'] ) : '',
-			'story_intro'     => isset( $meta['INTRODUZIONE'] ) ? LLM_Story_Meta::sanitize_plot( $meta['INTRODUZIONE'] ) : '',
-			'story_finale'    => isset( $meta['FINALE'] ) ? LLM_Story_Meta::sanitize_plot( $meta['FINALE'] ) : '',
-			'story_card_text' => isset( $meta['SCHEDA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['SCHEDA'] ) : '',
-			'category_id'     => (int) $cat_id,
-			'category_name'   => isset( $meta['CATEGORIA'] ) ? sanitize_text_field( $meta['CATEGORIA'] ) : '',
+			'title'                => ! empty( $meta['TITOLO'] ) ? sanitize_text_field( $meta['TITOLO'] ) : get_the_title( $post_id ),
+			'known_lang'           => isset( $meta['LINGUA_INTERFACCIA'] ) ? sanitize_key( $meta['LINGUA_INTERFACCIA'] ) : '',
+			'target_lang'          => isset( $meta['LINGUA_OBIETTIVO'] ) ? sanitize_key( $meta['LINGUA_OBIETTIVO'] ) : '',
+			'title_target'         => isset( $meta['TITOLO_OBIETTIVO'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TITOLO_OBIETTIVO'] ) : '',
+			'story_plot'           => isset( $meta['TRAMA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TRAMA'] ) : '',
+			'story_intro'          => isset( $meta['INTRODUZIONE'] ) ? LLM_Story_Meta::sanitize_plot( $meta['INTRODUZIONE'] ) : '',
+			'story_finale'         => isset( $meta['FINALE'] ) ? LLM_Story_Meta::sanitize_plot( $meta['FINALE'] ) : '',
+			'story_card_text'      => isset( $meta['SCHEDA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['SCHEDA'] ) : '',
+			'category_id'          => (int) $cat_id,
+			'category_name'        => isset( $meta['CATEGORIA'] ) ? sanitize_text_field( $meta['CATEGORIA'] ) : '',
+			'story_cefr_level'     => isset( $meta['LIVELLO_CEFR'] ) ? sanitize_text_field( $meta['LIVELLO_CEFR'] ) : '',
+			'story_grammar_topics' => isset( $meta['TOPIC_GRAMMATICALI'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TOPIC_GRAMMATICALI'] ) : '',
 		);
 
 		return array(

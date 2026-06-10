@@ -29,6 +29,8 @@ class LLM_Story_Template_Vars {
 			__( 'Titolo (post)', 'llm-con-tabelle' )                => 'post_title',
 			__( 'Estratto', 'llm-con-tabelle' )                     => 'post_excerpt',
 			__( 'Breve testo scheda storia', 'llm-con-tabelle' )    => 'story_card_text',
+			__( 'Livello CEFR', 'llm-con-tabelle' )                 => 'story_cefr_level',
+			__( 'Topic Grammaticali', 'llm-con-tabelle' )           => 'story_grammar_topics',
 			__( 'Contenuto (HTML)', 'llm-con-tabelle' )              => 'post_content',
 			__( 'Autore — nome visualizzato', 'llm-con-tabelle' )    => 'author_name',
 			__( 'Data pubblicazione', 'llm-con-tabelle' )           => 'post_date',
@@ -140,6 +142,12 @@ class LLM_Story_Template_Vars {
 				return get_the_title( $post );
 			case 'story_card_text':
 				$v = get_post_meta( $id, LLM_Story_Meta::STORY_CARD_TEXT, true );
+				return is_string( $v ) ? $v : '';
+			case 'story_cefr_level':
+				$v = get_post_meta( $id, LLM_Story_Meta::STORY_CEFR_LEVEL, true );
+				return is_string( $v ) ? $v : '';
+			case 'story_grammar_topics':
+				$v = get_post_meta( $id, LLM_Story_Meta::STORY_GRAMMAR_TOPICS, true );
 				return is_string( $v ) ? $v : '';
 			case 'post_excerpt':
 				return (string) $post->post_excerpt;

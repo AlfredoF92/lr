@@ -310,6 +310,12 @@
 		if ( typeof form.story_card_text === 'string' ) {
 			$( '#llm_story_card_text' ).val( form.story_card_text );
 		}
+		if ( typeof form.story_cefr_level === 'string' ) {
+			$( '#llm_story_cefr_level' ).val( form.story_cefr_level );
+		}
+		if ( typeof form.story_grammar_topics === 'string' ) {
+			$( '#llm_story_grammar_topics' ).val( form.story_grammar_topics );
+		}
 
 		if ( form.category_id ) {
 			$( '#categorychecklist input[type="checkbox"]' ).prop( 'checked', false );
@@ -321,7 +327,7 @@
 			llmReplacePhrasesInEditor( phrases );
 		}
 
-		$( '#llm_known_lang, #llm_target_lang, #llm_title_target_lang, #llm_story_plot, #llm_story_intro, #llm_story_finale, #llm_story_card_text, #title' )
+		$( '#llm_known_lang, #llm_target_lang, #llm_title_target_lang, #llm_story_plot, #llm_story_intro, #llm_story_finale, #llm_story_card_text, #llm_story_cefr_level, #llm_story_grammar_topics, #title' )
 			.addClass( 'llm-import-field-updated' );
 		window.setTimeout( function () {
 			$( '.llm-import-field-updated' ).removeClass( 'llm-import-field-updated' );

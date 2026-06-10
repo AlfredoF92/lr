@@ -181,7 +181,9 @@ class LLM_Admin_Story {
 		$plot    = get_post_meta( $post->ID, LLM_Story_Meta::STORY_PLOT, true );
 		$intro     = get_post_meta( $post->ID, LLM_Story_Meta::STORY_INTRO, true );
 		$finale    = get_post_meta( $post->ID, LLM_Story_Meta::STORY_FINALE, true );
-		$card_text = get_post_meta( $post->ID, LLM_Story_Meta::STORY_CARD_TEXT, true );
+		$card_text      = get_post_meta( $post->ID, LLM_Story_Meta::STORY_CARD_TEXT, true );
+		$cefr_level     = get_post_meta( $post->ID, LLM_Story_Meta::STORY_CEFR_LEVEL, true );
+		$grammar_topics = get_post_meta( $post->ID, LLM_Story_Meta::STORY_GRAMMAR_TOPICS, true );
 		$cost    = (int) get_post_meta( $post->ID, LLM_Story_Meta::COIN_COST, true );
 		$reward  = (int) get_post_meta( $post->ID, LLM_Story_Meta::COIN_REWARD, true );
 
@@ -227,6 +229,45 @@ class LLM_Admin_Story {
 			<label for="llm_story_card_text"><strong><?php esc_html_e( 'Breve testo per la scheda della storia', 'llm-con-tabelle' ); ?></strong></label>
 			<p class="description"><?php esc_html_e( 'Testo breve visualizzato nella scheda/anteprima della storia.', 'llm-con-tabelle' ); ?></p>
 			<textarea name="llm_story_card_text" id="llm_story_card_text" class="widefat" rows="3"><?php echo esc_textarea( is_string( $card_text ) ? $card_text : '' ); ?></textarea>
+		</div>
+		<?php
+		$target_label = '';
+		if ( ! empty( $target ) ) {
+			$lang_names   = array( 'it' => 'Italiano', 'en' => 'Inglese', 'pl' => 'Polacco', 'es' => 'Spagnolo' );
+			$target_label = isset( $lang_names[ $target ] ) ? $lang_names[ $target ] : strtoupper( $target );
+		}
+		?>
+		<div class="llm-field-row">
+			<label for="llm_story_cefr_level">
+				<strong>
+					<?php
+					if ( $target_label ) {
+						/* translators: %s: target language name */
+						printf( esc_html__( 'Livello CEFR (lingua da imparare: %s)', 'llm-con-tabelle' ), esc_html( $target_label ) );
+					} else {
+						esc_html_e( 'Livello CEFR (lingua da imparare)', 'llm-con-tabelle' );
+					}
+					?>
+				</strong>
+			</label>
+			<p class="description"><?php esc_html_e( 'Es. A1, A2, B1, B2, C1, C2', 'llm-con-tabelle' ); ?></p>
+			<input type="text" name="llm_story_cefr_level" id="llm_story_cefr_level" class="regular-text" value="<?php echo esc_attr( is_string( $cefr_level ) ? $cefr_level : '' ); ?>" placeholder="A2" />
+		</div>
+		<div class="llm-field-row">
+			<label for="llm_story_grammar_topics">
+				<strong>
+					<?php
+					if ( $target_label ) {
+						/* translators: %s: target language name */
+						printf( esc_html__( 'Topic Grammaticali (in %s)', 'llm-con-tabelle' ), esc_html( $target_label ) );
+					} else {
+						esc_html_e( 'Topic Grammaticali', 'llm-con-tabelle' );
+					}
+					?>
+				</strong>
+			</label>
+			<p class="description"><?php esc_html_e( 'Un topic per riga. Vengono importati automaticamente dallo Story Importer.', 'llm-con-tabelle' ); ?></p>
+			<textarea name="llm_story_grammar_topics" id="llm_story_grammar_topics" class="widefat" rows="6"><?php echo esc_textarea( is_string( $grammar_topics ) ? $grammar_topics : '' ); ?></textarea>
 		</div>
 		<hr />
 		<div class="llm-field-row llm-field-inline">
@@ -724,6 +765,18 @@ class LLM_Admin_Story {
 			$post_id,
 			LLM_Story_Meta::STORY_CARD_TEXT,
 			isset( $_POST['llm_story_card_text'] ) ? LLM_Story_Meta::sanitize_plot( wp_unslash( $_POST['llm_story_card_text'] ) ) : ''
+		);
+
+		update_post_meta(
+			$post_id,
+			LLM_Story_Meta::STORY_CEFR_LEVEL,
+			isset( $_POST['llm_story_cefr_level'] ) ? sanitize_text_field( wp_unslash( $_POST['llm_story_cefr_level'] ) ) : ''
+		);
+
+		update_post_meta(
+			$post_id,
+			LLM_Story_Meta::STORY_GRAMMAR_TOPICS,
+			isset( $_POST['llm_story_grammar_topics'] ) ? LLM_Story_Meta::sanitize_plot( wp_unslash( $_POST['llm_story_grammar_topics'] ) ) : ''
 		);
 
 		$cost   = isset( $_POST['llm_story_coin_cost'] ) ? LLM_Story_Meta::sanitize_coin( wp_unslash( $_POST['llm_story_coin_cost'] ) ) : 0;
