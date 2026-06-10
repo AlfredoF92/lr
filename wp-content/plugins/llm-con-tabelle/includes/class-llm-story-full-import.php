@@ -35,7 +35,9 @@ class LLM_Story_Full_Import {
 		'SCHEDA',
 		'CATEGORIA',
 		'LIVELLO_CEFR',
+		'LIVELLO',
 		'TOPIC_GRAMMATICALI',
+		'GRAMMATICA',
 	);
 
 	/**
@@ -56,6 +58,9 @@ class LLM_Story_Full_Import {
 			'FINALE#Bravissimo! Hai completato la storia demo di Clara e Luca. Ora conosci le basi di una conversazione al ristorante in polacco.',
 			'SCHEDA#Storia demo: appuntamento al ristorante — perfetta per imparare il polacco di tutti i giorni.',
 			'CATEGORIA#it-polish',
+			'LIVELLO#A1',
+			'GRAMMATICA#• Present Simple – per abitudini e fatti generali.',
+			'• Verbo essere (być) – forma base della coniugazione polacca.',
 		);
 
 		$lines[] = self::SECTION_SEPARATOR;
@@ -392,8 +397,8 @@ class LLM_Story_Full_Import {
 			'story_card_text'      => isset( $meta['SCHEDA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['SCHEDA'] ) : '',
 			'category_id'          => (int) $cat_id,
 			'category_name'        => isset( $meta['CATEGORIA'] ) ? sanitize_text_field( $meta['CATEGORIA'] ) : '',
-			'story_cefr_level'     => isset( $meta['LIVELLO_CEFR'] ) ? sanitize_text_field( $meta['LIVELLO_CEFR'] ) : '',
-			'story_grammar_topics' => isset( $meta['TOPIC_GRAMMATICALI'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TOPIC_GRAMMATICALI'] ) : '',
+			'story_cefr_level'     => isset( $meta['LIVELLO'] ) ? sanitize_text_field( $meta['LIVELLO'] ) : ( isset( $meta['LIVELLO_CEFR'] ) ? sanitize_text_field( $meta['LIVELLO_CEFR'] ) : '' ),
+			'story_grammar_topics' => isset( $meta['GRAMMATICA'] ) ? LLM_Story_Meta::sanitize_plot( $meta['GRAMMATICA'] ) : ( isset( $meta['TOPIC_GRAMMATICALI'] ) ? LLM_Story_Meta::sanitize_plot( $meta['TOPIC_GRAMMATICALI'] ) : '' ),
 		);
 
 		return array(
