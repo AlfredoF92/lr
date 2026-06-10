@@ -872,6 +872,7 @@ class LLM_Admin_Story {
 			}
 			$new[ $key ] = $label;
 			if ( 'title' === $key ) {
+				$new['llm_excerpt'] = __( 'Riassunto', 'llm-con-tabelle' );
 				$new['llm_langs']   = __( 'Lingue', 'llm-con-tabelle' );
 				$new['llm_phrases'] = __( 'Frasi (DB)', 'llm-con-tabelle' );
 				$new['llm_coins']   = __( 'Coin', 'llm-con-tabelle' );
@@ -892,6 +893,11 @@ class LLM_Admin_Story {
 					echo '<span class="llm-no-thumb">—</span>';
 				}
 				echo '</div>';
+				break;
+			case 'llm_excerpt':
+				if ( class_exists( 'LLM_Admin_Posts_List' ) ) {
+					LLM_Admin_Posts_List::render_excerpt( $post_id, 'story' );
+				}
 				break;
 			case 'llm_langs':
 				$k = get_post_meta( $post_id, LLM_Story_Meta::KNOWN_LANG, true );

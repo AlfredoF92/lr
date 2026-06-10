@@ -4,8 +4,26 @@
    Colonna thumbnail nella lista storie
    ============================================================ */
 
-.column-llm_thumbnail {
+.column-llm_thumbnail,
+.column-llm_list_thumb {
 	width: 72px;
+}
+
+.column-llm_list_excerpt,
+.column-llm_excerpt {
+	width: 28%;
+	min-width: 200px;
+}
+
+.llm-list-excerpt {
+	color: #50575e;
+	font-size: 13px;
+	line-height: 1.5;
+	max-width: 420px;
+}
+
+.llm-list-excerpt--empty {
+	color: #c3c4c7;
 }
 
 .llm-col-thumb {

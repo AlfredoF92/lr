@@ -38,6 +38,7 @@ require_once LLM_TABELLE_DIR . 'includes/class-llm-story-phrases-csv.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-story-full-import.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-community.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-user-stats.php';
+require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-posts-list.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-story.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-users.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-community.php';
@@ -109,6 +110,7 @@ function llm_tabelle_boot() {
 	LLM_User_Meta::init();
 	LLM_Community::init();
 	LLM_User_Stats::init();
+	LLM_Admin_Posts_List::init();
 	LLM_Admin_Story::init();
 	LLM_Story_Phrases_Csv::init();
 	LLM_Story_Full_Import::init();
