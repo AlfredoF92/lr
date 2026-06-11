@@ -424,9 +424,14 @@
 	var micState = 'idle'; // 'idle' | 'pending' | 'listening'
 	var micLastFinalIndex = 0;
 	var micPermissionGranted = false;
-	var MIC_SESSION_MS = 5000;
+	var MIC_PENDING_MS = 2000;
+	var MIC_SESSION_MS = 6000;
+	var MIC_BAR_FADE_MS = 180;
 	var micSessionActive = false;
 	var micSessionTimer = null;
+	var micPendingTimer = null;
+	var micPendingPhaseDone = false;
+	var micRecognitionStarted = false;
 
 	/** Unisce testo finale evitando duplicati (motori mobile spesso inviano frasi cumulative). */
 	function mergeFinalTranscript(existing, chunk) {
@@ -805,6 +810,7 @@
 		setComposePhaseVisible(2, true);
 		if (btn2) { btn2.disabled = false; }
 		if (input2) { input2.readOnly = false; }
+		syncContinue2Visibility();
 	});
 }
 
@@ -1032,17 +1038,35 @@
 		window.llmUpdateStoryProgressBar(String(storyId), initDone, phrases.length);
 	}
 
-	function showMicCountdown(btn) {
+	function showMicCountdownIdle(btn) {
 		var wrap = btn && btn._llmMicCountdownWrap;
 		var bar = btn && btn._llmMicCountdownBar;
 		if (!wrap || !bar) {
 			return;
 		}
 		wrap.hidden = false;
-		wrap.classList.add('llm-phrase-game__mic-countdown--active');
+		wrap.classList.remove('llm-phrase-game__mic-countdown--active');
 		bar.style.animation = 'none';
+		bar.style.transform = 'scaleX(1)';
+	}
+
+	function startMicCountdownAnimation(btn) {
+		var wrap = btn && btn._llmMicCountdownWrap;
+		var bar = btn && btn._llmMicCountdownBar;
+		if (!wrap || !bar) {
+			return;
+		}
+		wrap.hidden = false;
+		bar.style.animation = 'none';
+		bar.style.transform = 'scaleX(1)';
+		wrap.classList.remove('llm-phrase-game__mic-countdown--active');
 		void bar.offsetWidth;
-		bar.style.animation = 'llm-mic-countdown ' + (MIC_SESSION_MS / 1000) + 's linear forwards';
+		wrap.classList.add('llm-phrase-game__mic-countdown--active');
+		void bar.offsetWidth;
+		bar.style.animation =
+			'llm-mic-countdown ' +
+			(MIC_SESSION_MS / 1000) + 's linear ' +
+			(MIC_BAR_FADE_MS / 1000) + 's forwards';
 	}
 
 	function hideMicCountdown(btn) {
@@ -1052,6 +1076,7 @@
 		btn._llmMicCountdownWrap.hidden = true;
 		btn._llmMicCountdownWrap.classList.remove('llm-phrase-game__mic-countdown--active');
 		btn._llmMicCountdownBar.style.animation = 'none';
+		btn._llmMicCountdownBar.style.transform = '';
 	}
 
 	function restoreMicBtnText(btn) {
@@ -1072,17 +1097,18 @@
 		el.classList.remove(
 			'llm-phrase-game__mic-status--visible',
 			'llm-phrase-game__mic-status--pending',
-			'llm-phrase-game__mic-status--listening'
+			'llm-phrase-game__mic-status--listening',
+			'llm-phrase-game__mic-status--error'
 		);
+		if (btnEl._llmMicStatusErrorLine) {
+			btnEl._llmMicStatusErrorLine.textContent = '';
+		}
 		if (state === 'idle') {
-			el.textContent = '';
 			return;
 		}
 		if (state === 'pending') {
-			el.textContent = i18n.micPending || '…';
 			el.classList.add('llm-phrase-game__mic-status--pending');
 		} else if (state === 'listening') {
-			el.textContent = i18n.micListening || '…';
 			el.classList.add('llm-phrase-game__mic-status--listening');
 		}
 		requestAnimationFrame(function () {
@@ -1132,8 +1158,39 @@
 		updateMicStatusEl(btnEl, micState === 'pending' ? 'pending' : 'listening');
 	}
 
+	function clearMicPendingTimer() {
+		if (micPendingTimer !== null) {
+			clearTimeout(micPendingTimer);
+			micPendingTimer = null;
+		}
+	}
+
+	function beginMicCountdownPhase() {
+		if (!micSessionActive || !activeMicBtn) {
+			return;
+		}
+		startMicCountdownAnimation(activeMicBtn);
+		if (micSessionTimer !== null) {
+			clearTimeout(micSessionTimer);
+		}
+		micSessionTimer = setTimeout(function () {
+			finishMicSession();
+		}, MIC_SESSION_MS);
+	}
+
+	function tryEnterMicListeningState() {
+		if (!micSessionActive || micState !== 'pending' || !micPendingPhaseDone || !micRecognitionStarted) {
+			return;
+		}
+		micState = 'listening';
+		applyMicStateClasses();
+	}
+
 	function stopSpeech() {
 		micSessionActive = false;
+		clearMicPendingTimer();
+		micPendingPhaseDone = false;
+		micRecognitionStarted = false;
 		if (micSessionTimer !== null) {
 			clearTimeout(micSessionTimer);
 			micSessionTimer = null;
@@ -1161,14 +1218,19 @@
 	function showMicError(btn, msg) {
 		if (!btn || !msg) { return; }
 		var status = btn._llmMicStatusEl;
-		if (!status) { return; }
-		status.textContent = msg;
+		var errorLine = btn._llmMicStatusErrorLine;
+		if (!status || !errorLine) { return; }
+		errorLine.textContent = msg;
+		status.classList.remove(
+			'llm-phrase-game__mic-status--pending',
+			'llm-phrase-game__mic-status--listening'
+		);
 		status.classList.add(
 			'llm-phrase-game__mic-status--visible',
 			'llm-phrase-game__mic-status--error'
 		);
 		setTimeout(function () {
-			status.textContent = '';
+			errorLine.textContent = '';
 			status.classList.remove(
 				'llm-phrase-game__mic-status--visible',
 				'llm-phrase-game__mic-status--error'
@@ -1313,24 +1375,31 @@
 		speechFinals = '';
 		micLastFinalIndex = 0;
 		micState = 'pending';
+		micPendingPhaseDone = false;
+		micRecognitionStarted = false;
+		clearMicPendingTimer();
 
 		micBtn.disabled = true;
 		if (micBtn !== mic1 && mic1) { mic1.disabled = true; }
 		if (micBtn !== mic2 && mic2) { mic2.disabled = true; }
-		showMicCountdown(micBtn);
+		showMicCountdownIdle(micBtn);
 		applyMicStateClasses();
 
-		micSessionTimer = setTimeout(function () {
-			finishMicSession();
-		}, MIC_SESSION_MS);
+		micPendingTimer = setTimeout(function () {
+			micPendingTimer = null;
+			if (!micSessionActive) {
+				return;
+			}
+			micPendingPhaseDone = true;
+			beginMicCountdownPhase();
+			tryEnterMicListeningState();
+		}, MIC_PENDING_MS);
 
 		function attachSpeechHandlers(rec) {
 			rec.onstart = function () {
 				if (!micSessionActive) { return; }
-				if (micState === 'pending') {
-					micState = 'listening';
-					applyMicStateClasses();
-				}
+				micRecognitionStarted = true;
+				tryEnterMicListeningState();
 			};
 
 			rec.onresult = function (ev) {
@@ -1354,6 +1423,11 @@
 				textarea.value = speechBase + speechFinals + interim;
 				if (typeof textarea._llmSyncClearBtn === 'function') {
 					textarea._llmSyncClearBtn();
+				}
+				if (textarea === input1) {
+					syncContinue1Visibility();
+				} else if (textarea === input2) {
+					syncContinue2Visibility();
 				}
 			};
 
@@ -1416,12 +1490,28 @@
 		var origTextEl = micBtn.querySelector('.llm-phrase-game__mic-text');
 		micBtn._llmMicOrigText = origTextEl ? origTextEl.textContent : '';
 
-		var statusEl = document.createElement('p');
+		var statusEl = document.createElement('div');
 		statusEl.className = 'llm-phrase-game__mic-status';
 		statusEl.setAttribute('aria-live', 'polite');
 		statusEl.setAttribute('aria-atomic', 'true');
+
+		var pendingLine = document.createElement('span');
+		pendingLine.className = 'llm-phrase-game__mic-status-line llm-phrase-game__mic-status-line--pending';
+		pendingLine.textContent = i18n.micPending || '…';
+
+		var listeningLine = document.createElement('span');
+		listeningLine.className = 'llm-phrase-game__mic-status-line llm-phrase-game__mic-status-line--listening';
+		listeningLine.textContent = i18n.micListening || '…';
+
+		var errorLine = document.createElement('span');
+		errorLine.className = 'llm-phrase-game__mic-status-line llm-phrase-game__mic-status-line--error';
+
+		statusEl.appendChild(pendingLine);
+		statusEl.appendChild(listeningLine);
+		statusEl.appendChild(errorLine);
 		micBtn.parentNode.insertBefore(statusEl, micBtn);
 		micBtn._llmMicStatusEl = statusEl;
+		micBtn._llmMicStatusErrorLine = errorLine;
 
 		var countdownWrap = document.createElement('div');
 		countdownWrap.className = 'llm-phrase-game__mic-countdown';
@@ -1521,6 +1611,20 @@
 			clearBtn.hidden = !(textarea.value || '').trim();
 		}
 
+	function syncContinue1Visibility() {
+		if (!btn1 || !input1) {
+			return;
+		}
+		btn1.hidden = !(input1.value || '').trim();
+	}
+
+	function syncContinue2Visibility() {
+		if (!btn2 || !input2) {
+			return;
+		}
+		btn2.hidden = !(input2.value || '').trim();
+	}
+
 		function bindClearInput(clearBtn, textarea, onClear) {
 			if (!clearBtn || !textarea) {
 				return;
@@ -1545,15 +1649,18 @@
 	bindClearInput(clear1, input1, function () {
 		setMessage('');
 		hidePhase1Feedback();
+		syncContinue1Visibility();
 	});
 		bindClearInput(clear2, input2, function () {
 			if (messagePhase2El) {
 				setMessagePhase2('', '');
 			}
+			syncContinue2Visibility();
 		});
 
 		if (input2) {
 			input2.addEventListener('input', function () {
+				syncContinue2Visibility();
 				if (!messagePhase2El) {
 					return;
 				}
@@ -1740,6 +1847,7 @@
 			if (btn2) {
 				btn2.disabled = false;
 			}
+			syncContinue2Visibility();
 			setMessagePhase2('', '');
 		}
 
@@ -1826,6 +1934,7 @@
 			input2.value = '';
 			if (input1 && input1._llmSyncClearBtn) { input1._llmSyncClearBtn(); }
 			if (input2 && input2._llmSyncClearBtn) { input2._llmSyncClearBtn(); }
+			syncContinue2Visibility();
 			setMessage('');
 			setMessagePhase2('', '');
 			showPhase(1);
@@ -1833,6 +1942,7 @@
 			var introId = ++phraseIntroRun;
 			if (btn1) {
 				btn1.disabled = true;
+				btn1.hidden = true;
 			}
 			if (input1) {
 				input1.readOnly = true;
@@ -1856,6 +1966,7 @@
 				if (input1) {
 					input1.readOnly = false;
 				}
+				syncContinue1Visibility();
 				syncListenTargetUi();
 			});
 		}
@@ -1901,6 +2012,7 @@
 	input1.addEventListener('input', function () {
 		setMessage('');
 		hidePhase1Feedback();
+		syncContinue1Visibility();
 	});
 
 	btn1.addEventListener('click', function () {
@@ -1955,8 +2067,9 @@
 	setMessage('');
 	setMessagePhase2('', '');
 	btn1.disabled = true;
-	if (btn2) { btn2.disabled = true; }
+	if (btn2) { btn2.disabled = true; btn2.hidden = true; }
 	if (input2) { input2.readOnly = true; input2.value = ''; }
+	if (input2 && input2._llmSyncClearBtn) { input2._llmSyncClearBtn(); }
 
 	/* Avvia controllo server in parallelo (solo per registrare avanzamento) */
 	postCheck(1, txt, false, function (json) {
@@ -2079,6 +2192,7 @@
 				if (input2) {
 					input2.readOnly = false;
 				}
+				syncContinue2Visibility();
 				var msg =
 						(json && json.data && json.data.message) || i18n.phase2Fail || '';
 					setMessagePhase2Typewriter(msg, 'error');
@@ -2140,6 +2254,8 @@
 		if (pendingStoryIntroTypewriter && cardEl) {
 			cardEl.hidden = false;
 		}
+		syncContinue1Visibility();
+		syncContinue2Visibility();
 		loadPhrase(!!startResume);
 	});
 	}

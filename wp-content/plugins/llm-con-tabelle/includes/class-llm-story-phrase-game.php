@@ -123,6 +123,7 @@ class LLM_Story_Phrase_Game {
 			'listen_target_aria',
 			LLM_Phrase_Game_I18n::target_lang_label_for_ui( $target_code_shortcode )
 		);
+		$listen_target_label   = LLM_Phrase_Game_I18n::get( 'listen_target_label' );
 
 		ob_start();
 		?>
@@ -140,13 +141,13 @@ class LLM_Story_Phrase_Game {
 							<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">
 								<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
 							</span>
+							<span class="llm-phrase-game__listen-target-text"><?php echo esc_html( $listen_target_label ); ?></span>
 						</button>
 					</div>
 					<p class="llm-phrase-game__prompt llm-phrase-game__prompt--translate"></p>
 					<label class="screen-reader-text" for="<?php echo esc_attr( $uid ); ?>-input1"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'sr_your_translation' ) ); ?></label>
 					<div class="llm-phrase-game__compose llm-phrase-game__compose--phase1">
 						<div class="llm-phrase-game__input-block">
-							<?php echo self::render_clear_input_button( '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 							<div class="llm-phrase-game__input-shell">
 								<textarea id="<?php echo esc_attr( $uid ); ?>-input1" class="llm-phrase-game__input llm-phrase-game__input--1" rows="3"></textarea>
 							</div>
@@ -155,7 +156,10 @@ class LLM_Story_Phrase_Game {
 								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 							</button>
 						</div>
-						<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue1 button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+						<div class="llm-phrase-game__actions">
+							<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue1 button" hidden><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+							<?php echo self::render_clear_input_button( '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
+						</div>
 					</div>
 				</div>
 			<div class="llm-phrase-game__message" role="alert"></div>
@@ -183,6 +187,7 @@ class LLM_Story_Phrase_Game {
 								<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">
 									<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
 								</span>
+								<span class="llm-phrase-game__listen-target-text"><?php echo esc_html( $listen_target_label ); ?></span>
 							</button>
 						</div>
 					<div class="llm-phrase-game__phase2-recap" aria-hidden="true">
@@ -191,7 +196,6 @@ class LLM_Story_Phrase_Game {
 						<p class="llm-phrase-game__phase2-recap__prompt"></p>
 					</div>
 					<div class="llm-phrase-game__input-block">
-						<?php echo self::render_clear_input_button( '2' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 						<div class="llm-phrase-game__input-shell">
 							<textarea id="<?php echo esc_attr( $uid ); ?>-input2" class="llm-phrase-game__input llm-phrase-game__input--2" rows="3"></textarea>
 						</div>
@@ -200,7 +204,10 @@ class LLM_Story_Phrase_Game {
 								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 							</button>
 						</div>
-						<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue2 button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+						<div class="llm-phrase-game__actions">
+							<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue2 button" hidden><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+							<?php echo self::render_clear_input_button( '2' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
+						</div>
 					</div>
 					<div class="llm-phrase-game__message-phase2" role="status" aria-live="polite"></div>
 				</div>
