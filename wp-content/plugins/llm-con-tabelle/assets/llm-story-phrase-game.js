@@ -810,7 +810,6 @@
 		setComposePhaseVisible(2, true);
 		if (btn2) { btn2.disabled = false; }
 		if (input2) { input2.readOnly = false; }
-		syncContinue2Visibility();
 	});
 }
 
@@ -1425,9 +1424,7 @@
 					textarea._llmSyncClearBtn();
 				}
 				if (textarea === input1) {
-					syncContinue1Visibility();
 				} else if (textarea === input2) {
-					syncContinue2Visibility();
 				}
 			};
 
@@ -1604,25 +1601,39 @@
 		loadingNotesEl.innerHTML = '';
 	}
 
-	function syncClearInputVisibility(textarea, clearBtn) {
-			if (!textarea || !clearBtn) {
-				return;
-			}
-			clearBtn.hidden = !(textarea.value || '').trim();
-		}
+	var ACTION_FADE_MS = 250;
 
-	function syncContinue1Visibility() {
-		if (!btn1 || !input1) {
+	function setActionFadeVisible(el, show) {
+		if (!el) {
 			return;
 		}
-		btn1.hidden = !(input1.value || '').trim();
+		if (show) {
+			if (el._llmFadeTimer) {
+				clearTimeout(el._llmFadeTimer);
+				el._llmFadeTimer = null;
+			}
+			el.hidden = false;
+			requestAnimationFrame(function () {
+				el.classList.add('llm-phrase-game__action-fade--visible');
+			});
+			return;
+		}
+		el.classList.remove('llm-phrase-game__action-fade--visible');
+		if (el._llmFadeTimer) {
+			clearTimeout(el._llmFadeTimer);
+		}
+		el._llmFadeTimer = setTimeout(function () {
+			el._llmFadeTimer = null;
+			el.hidden = true;
+		}, ACTION_FADE_MS);
 	}
 
-	function syncContinue2Visibility() {
-		if (!btn2 || !input2) {
+	function syncClearInputVisibility(textarea, clearBtn) {
+		if (!textarea || !clearBtn) {
 			return;
 		}
-		btn2.hidden = !(input2.value || '').trim();
+		var wrap = clearBtn.closest('.llm-phrase-game__clear-wrap');
+		setActionFadeVisible(wrap, !!(textarea.value || '').trim());
 	}
 
 		function bindClearInput(clearBtn, textarea, onClear) {
@@ -1649,18 +1660,15 @@
 	bindClearInput(clear1, input1, function () {
 		setMessage('');
 		hidePhase1Feedback();
-		syncContinue1Visibility();
 	});
 		bindClearInput(clear2, input2, function () {
 			if (messagePhase2El) {
 				setMessagePhase2('', '');
 			}
-			syncContinue2Visibility();
 		});
 
 		if (input2) {
 			input2.addEventListener('input', function () {
-				syncContinue2Visibility();
 				if (!messagePhase2El) {
 					return;
 				}
@@ -1847,7 +1855,6 @@
 			if (btn2) {
 				btn2.disabled = false;
 			}
-			syncContinue2Visibility();
 			setMessagePhase2('', '');
 		}
 
@@ -1934,7 +1941,6 @@
 			input2.value = '';
 			if (input1 && input1._llmSyncClearBtn) { input1._llmSyncClearBtn(); }
 			if (input2 && input2._llmSyncClearBtn) { input2._llmSyncClearBtn(); }
-			syncContinue2Visibility();
 			setMessage('');
 			setMessagePhase2('', '');
 			showPhase(1);
@@ -1942,7 +1948,6 @@
 			var introId = ++phraseIntroRun;
 			if (btn1) {
 				btn1.disabled = true;
-				btn1.hidden = true;
 			}
 			if (input1) {
 				input1.readOnly = true;
@@ -1966,7 +1971,6 @@
 				if (input1) {
 					input1.readOnly = false;
 				}
-				syncContinue1Visibility();
 				syncListenTargetUi();
 			});
 		}
@@ -2012,7 +2016,6 @@
 	input1.addEventListener('input', function () {
 		setMessage('');
 		hidePhase1Feedback();
-		syncContinue1Visibility();
 	});
 
 	btn1.addEventListener('click', function () {
@@ -2067,7 +2070,7 @@
 	setMessage('');
 	setMessagePhase2('', '');
 	btn1.disabled = true;
-	if (btn2) { btn2.disabled = true; btn2.hidden = true; }
+	if (btn2) { btn2.disabled = true; }
 	if (input2) { input2.readOnly = true; input2.value = ''; }
 	if (input2 && input2._llmSyncClearBtn) { input2._llmSyncClearBtn(); }
 
@@ -2192,7 +2195,6 @@
 				if (input2) {
 					input2.readOnly = false;
 				}
-				syncContinue2Visibility();
 				var msg =
 						(json && json.data && json.data.message) || i18n.phase2Fail || '';
 					setMessagePhase2Typewriter(msg, 'error');
@@ -2254,8 +2256,6 @@
 		if (pendingStoryIntroTypewriter && cardEl) {
 			cardEl.hidden = false;
 		}
-		syncContinue1Visibility();
-		syncContinue2Visibility();
 		loadPhrase(!!startResume);
 	});
 	}

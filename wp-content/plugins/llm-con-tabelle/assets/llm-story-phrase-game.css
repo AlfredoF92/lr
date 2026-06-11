@@ -146,6 +146,19 @@
 	margin-bottom: 2.25rem !important;
 }
 
+.llm-phrase-game__divider--before-continue {
+	display: block !important;
+	width: 100% !important;
+	height: 0 !important;
+	margin: 0.85rem 0 0.75rem !important;
+	padding: 0 !important;
+	border: none !important;
+	border-top: 1px solid #b8bcc0 !important;
+	background: none !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
 .llm-phrase-game__card {
 	padding: 0;
 	border: none;
@@ -375,26 +388,46 @@
 }
 
 .llm-phrase-game__actions {
+	margin-top: 0;
+}
+
+.llm-phrase-game__continue-block {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.4rem;
-	margin-top: 0.15rem;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
 }
 
-.llm-phrase-game__actions .llm-phrase-game__btn--continue1,
-.llm-phrase-game__actions .llm-phrase-game__btn--continue2 {
+.llm-phrase-game__continue-block .llm-phrase-game__btn--continue1,
+.llm-phrase-game__continue-block .llm-phrase-game__btn--continue2 {
 	margin: 0;
 }
 
-.llm-phrase-game__actions .llm-phrase-game__clear-input {
-	align-self: auto;
-	margin: 0;
+.llm-phrase-game__clear-wrap {
+	display: flex;
+	justify-content: flex-start;
+	margin: -0.35rem 0 0;
 }
 
-/* Ricomincia da capo — accanto a Continua, compatto e grigio */
+.llm-phrase-game__action-fade {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.llm-phrase-game__action-fade--visible {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+
+.llm-phrase-game__action-fade[hidden] {
+	display: none !important;
+}
+
+/* Ricomincia da capo — sotto textarea, compatto e grigio */
 .llm-phrase-game__clear-input {
-	align-self: flex-end;
 	display: inline-flex;
 	align-items: center;
 	gap: 0.3rem;
@@ -412,10 +445,6 @@
 	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset !important;
 	cursor: pointer;
 	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.llm-phrase-game__clear-input[hidden] {
-	display: none !important;
 }
 
 .llm-phrase-game__clear-input-icon {
@@ -645,14 +674,6 @@
 	border-radius: 4px !important;
 	box-shadow: none !important;
 	text-decoration: none !important;
-}
-
-/* hidden + Elementor: il tema forza display su .button */
-.llm-phrase-game .button.llm-phrase-game__btn--continue1[hidden],
-.llm-phrase-game .button.llm-phrase-game__btn--continue2[hidden],
-.llm-phrase-game__btn.button.llm-phrase-game__btn--continue1[hidden],
-.llm-phrase-game__btn.button.llm-phrase-game__btn--continue2[hidden] {
-	display: none !important;
 }
 
 /* Continua: compatto, dark grigio–nero */

@@ -77,7 +77,7 @@ class LLM_Story_Phrase_Game {
 	 */
 	private static function render_clear_input_button( $suffix ) {
 		$label = LLM_Phrase_Game_I18n::get( 'clear_input' );
-		return '<button type="button" class="llm-phrase-game__clear-input llm-phrase-game__clear-input--' . esc_attr( $suffix ) . ' button" hidden aria-label="' . esc_attr( $label ) . '">'
+		return '<button type="button" class="llm-phrase-game__clear-input llm-phrase-game__clear-input--' . esc_attr( $suffix ) . ' button" aria-label="' . esc_attr( $label ) . '">'
 			. '<span class="llm-phrase-game__clear-input-icon" aria-hidden="true">'
 			. '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>'
 			. '</span>'
@@ -151,14 +151,19 @@ class LLM_Story_Phrase_Game {
 							<div class="llm-phrase-game__input-shell">
 								<textarea id="<?php echo esc_attr( $uid ); ?>-input1" class="llm-phrase-game__input llm-phrase-game__input--1" rows="3"></textarea>
 							</div>
+							<div class="llm-phrase-game__clear-wrap llm-phrase-game__clear-wrap--1 llm-phrase-game__action-fade" hidden>
+								<?php echo self::render_clear_input_button( '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
+							</div>
 							<button type="button" class="llm-phrase-game__mic llm-phrase-game__mic--1" aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'sr_mic' ) . ' ' . $mic_btn_text ); ?>">
 								<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
 								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 							</button>
 						</div>
 						<div class="llm-phrase-game__actions">
-							<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue1 button" hidden><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
-							<?php echo self::render_clear_input_button( '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
+							<div class="llm-phrase-game__continue-block llm-phrase-game__continue-block--1">
+								<hr class="llm-phrase-game__divider llm-phrase-game__divider--before-continue" role="presentation" aria-hidden="true" />
+								<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue1 button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -199,15 +204,20 @@ class LLM_Story_Phrase_Game {
 						<div class="llm-phrase-game__input-shell">
 							<textarea id="<?php echo esc_attr( $uid ); ?>-input2" class="llm-phrase-game__input llm-phrase-game__input--2" rows="3"></textarea>
 						</div>
-							<button type="button" class="llm-phrase-game__mic llm-phrase-game__mic--2" aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'sr_mic' ) . ' ' . $mic_btn_text ); ?>">
-								<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
-								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
-							</button>
-						</div>
-						<div class="llm-phrase-game__actions">
-							<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue2 button" hidden><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+						<div class="llm-phrase-game__clear-wrap llm-phrase-game__clear-wrap--2 llm-phrase-game__action-fade" hidden>
 							<?php echo self::render_clear_input_button( '2' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 						</div>
+						<button type="button" class="llm-phrase-game__mic llm-phrase-game__mic--2" aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'sr_mic' ) . ' ' . $mic_btn_text ); ?>">
+							<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
+							<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
+						</button>
+					</div>
+					<div class="llm-phrase-game__actions">
+						<div class="llm-phrase-game__continue-block llm-phrase-game__continue-block--2">
+							<hr class="llm-phrase-game__divider llm-phrase-game__divider--before-continue" role="presentation" aria-hidden="true" />
+							<button type="button" class="llm-phrase-game__btn llm-phrase-game__btn--continue2 button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'continue' ) ); ?></button>
+						</div>
+					</div>
 					</div>
 					<div class="llm-phrase-game__message-phase2" role="status" aria-live="polite"></div>
 				</div>
