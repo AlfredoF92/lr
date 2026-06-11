@@ -691,6 +691,10 @@
 		FINALE:              'Finale',
 		SCHEDA:              'Breve testo scheda',
 		CATEGORIA:           'Categoria',
+		LIVELLO:             'Livello CEFR',
+		LIVELLO_CEFR:        'Livello CEFR',
+		GRAMMATICA:          'Topic Grammaticali',
+		TOPIC_GRAMMATICALI:  'Topic Grammaticali',
 	};
 
 	function llmFullImportShowModal( show ) {
@@ -771,8 +775,9 @@
 		var $tbody   = $( '#llm-full-import-meta-rows' );
 		$tbody.empty();
 
-		var keys = [ 'TITOLO', 'LINGUA_INTERFACCIA', 'LINGUA_OBIETTIVO', 'TITOLO_OBIETTIVO', 'TRAMA', 'INTRODUZIONE', 'FINALE', 'SCHEDA', 'CATEGORIA' ];
+		var keys = [ 'TITOLO', 'LINGUA_INTERFACCIA', 'LINGUA_OBIETTIVO', 'TITOLO_OBIETTIVO', 'TRAMA', 'INTRODUZIONE', 'FINALE', 'SCHEDA', 'CATEGORIA', 'LIVELLO', 'LIVELLO_CEFR', 'GRAMMATICA', 'TOPIC_GRAMMATICALI' ];
 		keys.forEach( function ( k ) {
+			if ( ! ( k in meta ) ) { return; }
 			var label = META_LABELS[ k ] || k;
 			var val   = meta[ k ] || '';
 			var short = val.length > 200 ? val.slice( 0, 197 ) + '…' : val;

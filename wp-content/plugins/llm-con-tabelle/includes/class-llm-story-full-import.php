@@ -58,9 +58,6 @@ class LLM_Story_Full_Import {
 			'FINALE#Bravissimo! Hai completato la storia demo di Clara e Luca. Ora conosci le basi di una conversazione al ristorante in polacco.',
 			'SCHEDA#Storia demo: appuntamento al ristorante — perfetta per imparare il polacco di tutti i giorni.',
 			'CATEGORIA#it-polish',
-			'LIVELLO#A1',
-			'GRAMMATICA#• Present Simple – per abitudini e fatti generali.',
-			'• Verbo essere (być) – forma base della coniugazione polacca.',
 		);
 
 		$lines[] = self::SECTION_SEPARATOR;
@@ -357,6 +354,8 @@ class LLM_Story_Full_Import {
 			15 * MINUTE_IN_SECONDS
 		);
 
+		$preview_payload = self::build_form_payload( $meta, $cat_id, $post_id, is_array( $phrases_parsed ) && ! empty( $phrases_parsed ) ? $phrases_parsed : null );
+
 		wp_send_json_success(
 			array(
 				'token'           => $token,
@@ -365,6 +364,8 @@ class LLM_Story_Full_Import {
 				'phrases_count'   => is_array( $phrases_parsed ) ? count( $phrases_parsed ) : 0,
 				'phrases_preview' => $phrases_preview,
 				'warnings'        => $all_warnings,
+				'form'            => $preview_payload['form'],
+				'phrases_merged'  => $preview_payload['phrases'],
 			)
 		);
 	}

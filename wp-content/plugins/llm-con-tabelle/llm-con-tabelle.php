@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'LLM_TABELLE_VERSION', '2.2.10' );
+define( 'LLM_TABELLE_VERSION', '2.2.11' );
 define( 'LLM_TABELLE_FILE', __FILE__ );
 define( 'LLM_TABELLE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LLM_TABELLE_URL', plugin_dir_url( __FILE__ ) );
@@ -38,7 +38,6 @@ require_once LLM_TABELLE_DIR . 'includes/class-llm-story-phrases-csv.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-story-full-import.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-community.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-user-stats.php';
-require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-posts-list.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-story.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-users.php';
 require_once LLM_TABELLE_DIR . 'includes/class-llm-admin-community.php';
@@ -110,7 +109,6 @@ function llm_tabelle_boot() {
 	LLM_User_Meta::init();
 	LLM_Community::init();
 	LLM_User_Stats::init();
-	LLM_Admin_Posts_List::init();
 	LLM_Admin_Story::init();
 	LLM_Story_Phrases_Csv::init();
 	LLM_Story_Full_Import::init();
