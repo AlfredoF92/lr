@@ -398,12 +398,29 @@
 			}
 		}
 
+		function showPhase2RewritePrompt() {
+			if (!promptRewrite) {
+				return;
+			}
+			promptRewrite.textContent = i18n.rewritePrompt || '';
+			promptRewrite.style.opacity = '0';
+			promptRewrite.style.transition = 'opacity 0.35s ease';
+			requestAnimationFrame(function () {
+				requestAnimationFrame(function () {
+					promptRewrite.style.opacity = '1';
+				});
+			});
+		}
+
 		function setComposePhaseVisible(phaseNum, visible) {
 			var el = phaseNum === 1 ? composePhase1 : composePhase2;
 			if (!el) {
 				return;
 			}
 			el.classList.toggle('llm-phrase-game__compose--visible', !!visible);
+			if (phaseNum === 2 && visible) {
+				showPhase2RewritePrompt();
+			}
 		}
 
 		var phraseIx = 0;
@@ -781,15 +798,6 @@
 			labelAltEl.style.opacity = '1';
 		}
 
-		/* ── Prompt riscrivi → fade ─────────────────────────────────── */
-		if (promptRewrite) {
-			addStep(function () {
-				if (!alive()) { return; }
-				promptRewrite.textContent = i18n.rewritePrompt || '';
-				return fadeReveal(promptRewrite, 350);
-			});
-		}
-
 	return chain.then(function () {
 		if (!alive()) { return; }
 		/* Popola il recap fase-1 visibile dentro il blocco fase-2 */
@@ -804,8 +812,7 @@
 			phase2RecapIface.textContent = p && p.interface ? p.interface : '';
 		}
 		if (phase2RecapPrompt) {
-			var tpl = i18n.translatePrompt || '';
-			phase2RecapPrompt.textContent = tpl.replace('%s', cfg.targetLangLabel || '');
+			phase2RecapPrompt.textContent = '';
 		}
 		setComposePhaseVisible(2, true);
 		if (btn2) { btn2.disabled = false; }
@@ -1714,12 +1721,31 @@
 			return s;
 		}
 
+		function fadeRevealEl(el, dur) {
+			var d = dur || 350;
+			return new Promise(function (resolve) {
+				if (!el) {
+					resolve();
+					return;
+				}
+				el.style.opacity = '0';
+				el.style.transition = 'opacity ' + d + 'ms ease';
+				requestAnimationFrame(function () {
+					requestAnimationFrame(function () {
+						el.style.opacity = '1';
+						setTimeout(resolve, d);
+					});
+				});
+			});
+		}
+
 		function runPhraseIntroTypewriter(ifaceText, promptText, introRunId) {
 			if (!ifaceEl || !promptTrans) {
 				return Promise.resolve();
 			}
 			ifaceEl.innerHTML = '';
 			promptTrans.textContent = '';
+			promptTrans.style.opacity = '0';
 			function aliveIntro() {
 				return phraseIntroRun === introRunId;
 			}
@@ -1727,8 +1753,18 @@
 				if (!aliveIntro()) {
 					return;
 				}
-				return typewriterInto(promptTrans, promptText, aliveIntro);
+				promptTrans.textContent = promptText;
+				return fadeRevealEl(promptTrans, 350);
 			});
+		}
+
+		function syncInputPlaceholders() {
+			if (input1) {
+				input1.placeholder = t('inputPlaceholderPhase1', targetLang);
+			}
+			if (input2) {
+				input2.placeholder = t('inputPlaceholderPhase2', targetLang);
+			}
 		}
 
 		function setMessage(text, isError) {
@@ -1895,6 +1931,7 @@
 			}
 			return;
 		}
+			syncInputPlaceholders();
 			var p = phrases[phraseIx];
 			var useResume =
 				resumeStep2 &&
