@@ -305,6 +305,45 @@
 	color: inherit;
 }
 
+.llm-phrase-game__listen-target-wrap {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: stretch;
+	flex-shrink: 0;
+	max-width: 100%;
+}
+
+.llm-phrase-game__listen-target-wrap[hidden] {
+	display: none !important;
+}
+
+.llm-phrase-game__listen-countdown {
+	width: 100%;
+	height: 5px;
+	margin: 0.35rem 0 0;
+	background: rgba(0, 0, 0, 0.1);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.llm-phrase-game__listen-countdown[hidden] {
+	display: none;
+}
+
+.llm-phrase-game__listen-countdown__bar {
+	height: 100%;
+	width: 100%;
+	background: linear-gradient(90deg, #2271b1, #8e148e);
+	transform-origin: left center;
+	transform: scaleX(1);
+	opacity: 0;
+	transition: opacity 0.18s ease;
+}
+
+.llm-phrase-game__listen-countdown--active .llm-phrase-game__listen-countdown__bar {
+	opacity: 1;
+}
+
 .llm-phrase-game__prompt {
 	margin: 0 0 0.85rem;
 	color: inherit;
@@ -1046,12 +1085,20 @@
 
 .llm-phrase-game__mic-status--pending .llm-phrase-game__mic-status-line--pending,
 .llm-phrase-game__mic-status--listening .llm-phrase-game__mic-status-line--listening,
-.llm-phrase-game__mic-status--error .llm-phrase-game__mic-status-line--error {
+.llm-phrase-game__mic-status--error .llm-phrase-game__mic-status-line--error,
+.llm-phrase-game__mic-status--feedback .llm-phrase-game__mic-status-line--feedback {
 	opacity: 1;
 }
 
 .llm-phrase-game__mic-status-line--error {
 	color: #8b1a1a;
+}
+
+.llm-phrase-game__mic-status-line--feedback {
+	font-weight: 600;
+	font-size: 0.92rem;
+	line-height: 1.4;
+	color: #3a5a40;
 }
 
 /* ─── Countdown bar (4 secondi) ──────────────────────────────────────── */

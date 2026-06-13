@@ -389,6 +389,7 @@ class LLM_Story_Phrase_Game {
 			'feedback'            => class_exists( 'LLM_Admin_Phrase_Feedback' )
 				? LLM_Admin_Phrase_Feedback::get_for_lang( LLM_Phrase_Game_I18n::lang() )
 				: array(),
+			'micFeedback'         => LLM_Phrase_Game_I18n::get_mic_feedback(),
 			)
 		);
 	}

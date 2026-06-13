@@ -69,6 +69,231 @@ class LLM_Phrase_Game_I18n {
 	}
 
 	/**
+	 * Messaggi creativi post-sessione microfono, per tier.
+	 *
+	 * @return array<string, array<int, string>>
+	 */
+	/**
+	 * @return array{phase1: array<string, array<int, string>>, phase2: array<string, array<int, string>>}
+	 */
+	public static function get_mic_feedback() {
+		$lang = self::lang();
+		$all  = self::mic_feedback_bundles();
+		if ( isset( $all[ $lang ] ) ) {
+			return $all[ $lang ];
+		}
+		return $all['it'];
+	}
+
+	/**
+	 * @return array<string, array{phase1: array<string, array<int, string>>, phase2: array<string, array<int, string>>}>
+	 */
+	private static function mic_feedback_bundles() {
+		return array(
+			'it' => array(
+				'phase1' => array(
+					'not_started' => array(
+						'Il microfono non si è attivato. Riprova.',
+						'Sessione non avviata. Clicca di nuovo sul microfono.',
+					),
+					'silent'      => array(
+						'Non ho rilevato alcun testo. Prova a scandire le parole più lentamente.',
+						'Nessuna voce registrata. Articola meglio, parola per parola.',
+					),
+					'heard'       => array(
+						'Continua pure, aggiungi altre parole se vuoi.',
+						'Bene, prova ancora o vai avanti quando sei pronto.',
+						'Ottimo, continua a esercitarti con il microfono.',
+						'Puoi aggiungere altre parole o cliccare Continua.',
+						'Prova ancora a parlare, oppure vai avanti.',
+					),
+				),
+				'phase2' => array(
+					'not_started'  => array(
+						'Il microfono non si è attivato. Riprova.',
+						'Sessione non avviata. Clicca di nuovo sul microfono.',
+					),
+					'silent'       => array(
+						'Non ho rilevato alcun testo. Prova a scandire le parole più lentamente.',
+						'Nessuna voce registrata. Articola meglio, parola per parola.',
+					),
+					'unrecognized' => array(
+						'Non corrisponde alla traduzione attesa.',
+						'Non contiene parole della traduzione. Riprova parola per parola.',
+						'Sembra un\'altra frase. Concentrati sulla traduzione richiesta.',
+					),
+					'one'          => array(
+						'1 parola corretta. Continua così.',
+						'Buon inizio: 1 parola riconosciuta.',
+					),
+					'two'          => array(
+						'2 parole corrette. Stai andando bene.',
+						'2 parole riconosciute. Prosegui.',
+					),
+					'some'         => array(
+						'%1$d parole corrette. Manca poco.',
+						'%1$d parole riconosciute. Sei sulla strada giusta.',
+					),
+					'all'          => array(
+						'Tutte le parole riconosciute. Ottimo lavoro.',
+						'Traduzione completa al microfono. Perfetto.',
+					),
+				),
+			),
+			'en' => array(
+				'phase1' => array(
+					'not_started' => array(
+						'The microphone did not activate. Try again.',
+						'Session not started. Click the microphone again.',
+					),
+					'silent'      => array(
+						'No text detected. Try enunciating the words more slowly.',
+						'No voice recorded. Articulate each word more clearly.',
+					),
+					'heard'       => array(
+						'Keep going, add more words if you like.',
+						'Good — try again or continue when you are ready.',
+						'Keep practising with the microphone.',
+						'You can add more words or click Continue.',
+						'Try speaking again, or move on.',
+					),
+				),
+				'phase2' => array(
+					'not_started'  => array(
+						'The microphone did not activate. Try again.',
+						'Session not started. Click the microphone again.',
+					),
+					'silent'       => array(
+						'No text detected. Try enunciating the words more slowly.',
+						'No voice recorded. Articulate each word more clearly.',
+					),
+					'unrecognized' => array(
+						'It does not match the expected translation.',
+						'It does not contain words from the translation. Try again word by word.',
+						'It seems to be a different sentence. Focus on the required translation.',
+					),
+					'one'          => array(
+						'1 word correct. Keep going.',
+						'Good start: 1 word recognized.',
+					),
+					'two'          => array(
+						'2 words correct. You are doing well.',
+						'2 words recognized. Continue.',
+					),
+					'some'         => array(
+						'%1$d words correct. Almost there.',
+						'%1$d words recognized. You are on the right track.',
+					),
+					'all'          => array(
+						'All words recognized. Great work.',
+						'Complete translation on the microphone. Perfect.',
+					),
+				),
+			),
+			'pl' => array(
+				'phase1' => array(
+					'not_started' => array(
+						'Mikrofon nie wystartował. Spróbuj ponownie.',
+						'Sesja nie rozpoczęta. Kliknij mikrofon ponownie.',
+					),
+					'silent'      => array(
+						'Nie wykryto tekstu. Spróbuj wymawiać słowa wolniej i wyraźniej.',
+						'Nie nagrano głosu. Artykułuj lepiej, słowo po słowie.',
+					),
+					'heard'       => array(
+						'Śmiało, dodaj więcej słów jeśli chcesz.',
+						'Dobrze — spróbuj jeszcze raz lub idź dalej, gdy będziesz gotowy.',
+						'Kontynuuj ćwiczenie z mikrofonem.',
+						'Możesz dodać więcej słów lub kliknąć Kontynuuj.',
+						'Spróbuj mówić ponownie albo przejdź dalej.',
+					),
+				),
+				'phase2' => array(
+					'not_started'  => array(
+						'Mikrofon nie wystartował. Spróbuj ponownie.',
+						'Sesja nie rozpoczęta. Kliknij mikrofon ponownie.',
+					),
+					'silent'       => array(
+						'Nie wykryto tekstu. Spróbuj wymawiać słowa wolniej i wyraźniej.',
+						'Nie nagrano głosu. Artykułuj lepiej, słowo po słowie.',
+					),
+					'unrecognized' => array(
+						'Nie pasuje do oczekiwanego tłumaczenia.',
+						'Nie zawiera słów z tłumaczenia. Spróbuj słowo po słowie.',
+						'To wygląda na inne zdanie. Skup się na wymaganym tłumaczeniu.',
+					),
+					'one'          => array(
+						'1 słowo poprawne. Tak trzymaj.',
+						'Dobry początek: 1 słowo rozpoznane.',
+					),
+					'two'          => array(
+						'2 słowa poprawne. Idzie ci dobrze.',
+						'2 słowa rozpoznane. Kontynuuj.',
+					),
+					'some'         => array(
+						'%1$d słów poprawnych. Prawie gotowe.',
+						'%1$d słów rozpoznanych. Jesteś na dobrej drodze.',
+					),
+					'all'          => array(
+						'Wszystkie słowa rozpoznane. Świetna robota.',
+						'Pełne tłumaczenie przy mikrofonie. Idealnie.',
+					),
+				),
+			),
+			'es' => array(
+				'phase1' => array(
+					'not_started' => array(
+						'El micrófono no se activó. Inténtalo de nuevo.',
+						'Sesión no iniciada. Haz clic de nuevo en el micrófono.',
+					),
+					'silent'      => array(
+						'No se detectó texto. Intenta articular las palabras más despacio.',
+						'No se registró voz. Pronuncia cada palabra con más claridad.',
+					),
+					'heard'       => array(
+						'Sigue, añade más palabras si quieres.',
+						'Bien — prueba otra vez o continúa cuando estés listo.',
+						'Sigue practicando con el micrófono.',
+						'Puedes añadir más palabras o pulsar Continuar.',
+						'Prueba a hablar de nuevo, o sigue adelante.',
+					),
+				),
+				'phase2' => array(
+					'not_started'  => array(
+						'El micrófono no se activó. Inténtalo de nuevo.',
+						'Sesión no iniciada. Haz clic de nuevo en el micrófono.',
+					),
+					'silent'       => array(
+						'No se detectó texto. Intenta articular las palabras más despacio.',
+						'No se registró voz. Pronuncia cada palabra con más claridad.',
+					),
+					'unrecognized' => array(
+						'No coincide con la traducción esperada.',
+						'No contiene palabras de la traducción. Inténtalo palabra por palabra.',
+						'Parece otra frase. Concéntrate en la traducción requerida.',
+					),
+					'one'          => array(
+						'1 palabra correcta. Sigue así.',
+						'Buen inicio: 1 palabra reconocida.',
+					),
+					'two'          => array(
+						'2 palabras correctas. Lo estás haciendo bien.',
+						'2 palabras reconocidas. Continúa.',
+					),
+					'some'         => array(
+						'%1$d palabras correctas. Casi lo tienes.',
+						'%1$d palabras reconocidas. Vas por buen camino.',
+					),
+					'all'          => array(
+						'Todas las palabras reconocidas. Excelente trabajo.',
+						'Traducción completa al micrófono. Perfecto.',
+					),
+				),
+			),
+		);
+	}
+
+	/**
 	 * @return array<string, array<string, string>>
 	 */
 	private static function bundles() {
