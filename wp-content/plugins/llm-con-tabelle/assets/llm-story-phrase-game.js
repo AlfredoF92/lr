@@ -475,6 +475,11 @@
 	var micPendingPhaseDone = false;
 	var micRecognitionStarted = false;
 	var micFeedbackTimer = null;
+	var LISTEN_REPLAY_STORAGE_KEY = 'llm_phrase_game_replay_after_mic';
+	var LISTEN_REPLAY_DELAY_MS = 0;
+	var MIC_FEEDBACK_DISPLAY_MS = 8000;
+	var listenReplayTimer = null;
+	var listenReplayAfterMic = false;
 
 	/** Unisce testo finale evitando duplicati (motori mobile spesso inviano frasi cumulative). */
 	function mergeFinalTranscript(existing, chunk) {
@@ -1112,7 +1117,7 @@
 	}
 
 	function ensureListenTargetWrap(btn) {
-		if (!btn || btn._llmListenCountdownWrap) {
+		if (!btn || btn._llmListenWrapReady) {
 			return;
 		}
 		var parent = btn.parentNode;
@@ -1126,6 +1131,7 @@
 			}
 		}
 		btn._llmListenTargetWrap = wrap;
+
 		var countdownWrap = document.createElement('div');
 		countdownWrap.className = 'llm-phrase-game__listen-countdown';
 		countdownWrap.hidden = true;
@@ -1133,6 +1139,103 @@
 		wrap.appendChild(countdownWrap);
 		btn._llmListenCountdownWrap = countdownWrap;
 		btn._llmListenCountdownBar = countdownWrap.querySelector('.llm-phrase-game__listen-countdown__bar');
+
+		var replayToggle = document.createElement('div');
+		replayToggle.className = 'llm-phrase-game__listen-replay-toggle';
+		replayToggle.innerHTML =
+			'<span class="llm-phrase-game__listen-replay-toggle__label"></span>' +
+			'<div class="llm-phrase-game__listen-replay-toggle__switch" role="group">' +
+				'<button type="button" class="llm-phrase-game__listen-replay-toggle__opt llm-phrase-game__listen-replay-toggle__opt--yes"></button>' +
+				'<button type="button" class="llm-phrase-game__listen-replay-toggle__opt llm-phrase-game__listen-replay-toggle__opt--no"></button>' +
+			'</div>';
+		var replayLabel = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__label');
+		var replayYes = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__opt--yes');
+		var replayNo = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__opt--no');
+		if (replayLabel) {
+			replayLabel.textContent = i18n.listenReplayAfterMic || '';
+		}
+		if (replayYes) {
+			replayYes.textContent = i18n.listenReplayYes || 'Sì';
+			replayYes.setAttribute('aria-pressed', 'false');
+			replayYes.addEventListener('click', function () {
+				saveListenReplayPreference(true);
+			});
+		}
+		if (replayNo) {
+			replayNo.textContent = i18n.listenReplayNo || 'No';
+			replayNo.setAttribute('aria-pressed', 'true');
+			replayNo.addEventListener('click', function () {
+				saveListenReplayPreference(false);
+			});
+		}
+		wrap.appendChild(replayToggle);
+		btn._llmListenReplayToggle = replayToggle;
+		btn._llmListenReplayYes = replayYes;
+		btn._llmListenReplayNo = replayNo;
+		btn._llmListenWrapReady = true;
+	}
+
+	function loadListenReplayPreference() {
+		try {
+			listenReplayAfterMic = localStorage.getItem(LISTEN_REPLAY_STORAGE_KEY) === '1';
+		} catch (e) {
+			listenReplayAfterMic = false;
+		}
+	}
+
+	function saveListenReplayPreference(enabled) {
+		listenReplayAfterMic = !!enabled;
+		try {
+			localStorage.setItem(LISTEN_REPLAY_STORAGE_KEY, listenReplayAfterMic ? '1' : '0');
+		} catch (e) {
+			/* ignore */
+		}
+		syncListenReplayToggleUi();
+	}
+
+	function syncListenReplayToggleUi() {
+		[listenTargetBtn, listenTargetBtnPhase2].forEach(function (btn) {
+			if (!btn || !btn._llmListenReplayYes || !btn._llmListenReplayNo) {
+				return;
+			}
+			btn._llmListenReplayYes.classList.toggle(
+				'llm-phrase-game__listen-replay-toggle__opt--active',
+				listenReplayAfterMic
+			);
+			btn._llmListenReplayNo.classList.toggle(
+				'llm-phrase-game__listen-replay-toggle__opt--active',
+				!listenReplayAfterMic
+			);
+			btn._llmListenReplayYes.setAttribute('aria-pressed', listenReplayAfterMic ? 'true' : 'false');
+			btn._llmListenReplayNo.setAttribute('aria-pressed', !listenReplayAfterMic ? 'true' : 'false');
+		});
+	}
+
+	function getListenBtnForPhase(phaseNum) {
+		return phaseNum === 2 ? listenTargetBtnPhase2 : listenTargetBtn;
+	}
+
+	function clearListenReplayTimer() {
+		if (listenReplayTimer !== null) {
+			clearTimeout(listenReplayTimer);
+			listenReplayTimer = null;
+		}
+	}
+
+	function scheduleListenReplayAfterMic(micPhase) {
+		if (!listenReplayAfterMic) {
+			return;
+		}
+		clearListenReplayTimer();
+		listenReplayTimer = setTimeout(function () {
+			listenReplayTimer = null;
+			var listenBtn = getListenBtnForPhase(micPhase);
+			var p = phrases[phraseIx];
+			if (!listenBtn || !p) {
+				return;
+			}
+			speakTargetTranslation(p.target || '', listenBtn);
+		}, LISTEN_REPLAY_DELAY_MS);
 	}
 
 	function hideListenCountdown(btn) {
@@ -1364,7 +1467,7 @@
 		});
 		micFeedbackTimer = setTimeout(function () {
 			hideMicSessionFeedback(btn);
-		}, 4500);
+		}, MIC_FEEDBACK_DISPLAY_MS);
 	}
 
 	function setMicButtonsDisabled(disabled) {
@@ -1473,6 +1576,7 @@
 		stopSpeech();
 		if (opts.feedback !== false && btn) {
 			showMicSessionFeedback(btn, sessionText, recognitionStarted, micPhase);
+			scheduleListenReplayAfterMic(micPhase);
 		}
 	}
 
@@ -1504,6 +1608,7 @@
 			if (!window.speechSynthesis) {
 				return;
 			}
+			clearListenReplayTimer();
 			try {
 				window.speechSynthesis.cancel();
 			} catch (e) {
@@ -1635,6 +1740,7 @@
 
 		stopSpeech();
 		cancelTts();
+		clearListenReplayTimer();
 		hideMicSessionFeedback(micBtn);
 
 		micSessionActive = true;
@@ -1807,12 +1913,14 @@
 		bindMic(mic1, input1);
 		bindMic(mic2, input2);
 
+		loadListenReplayPreference();
 		if (listenTargetBtn) {
 			ensureListenTargetWrap(listenTargetBtn);
 		}
 		if (listenTargetBtnPhase2) {
 			ensureListenTargetWrap(listenTargetBtnPhase2);
 		}
+		syncListenReplayToggleUi();
 
 	/* Flag: feedback 0% già mostrato — secondo click bypassa alla fase 2 */
 	var feedbackWarnActive = false;

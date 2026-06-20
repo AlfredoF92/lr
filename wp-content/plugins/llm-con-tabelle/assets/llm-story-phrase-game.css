@@ -344,6 +344,65 @@
 	opacity: 1;
 }
 
+.llm-phrase-game__listen-replay-toggle {
+	margin-top: 0.35rem;
+	text-align: center;
+}
+
+.llm-phrase-game__listen-replay-toggle__label {
+	display: block;
+	font-size: 0.5rem;
+	line-height: 1.25;
+	font-weight: 500;
+	color: #888;
+	margin: 0 0 0.2rem;
+}
+
+.llm-phrase-game__listen-replay-toggle__switch {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.2rem;
+}
+
+.llm-phrase-game .llm-phrase-game__listen-replay-toggle__opt,
+.llm-phrase-game__listen-replay-toggle__opt {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	height: auto;
+	margin: 0;
+	padding: 0.08rem 0.32rem;
+	border: 1px solid #c0c0c4 !important;
+	border-radius: 10px;
+	background: transparent !important;
+	color: #777 !important;
+	font-family: inherit;
+	font-size: 0.5rem;
+	font-weight: 500;
+	line-height: 1.2;
+	cursor: pointer;
+	box-shadow: none !important;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.llm-phrase-game .llm-phrase-game__listen-replay-toggle__opt:hover,
+.llm-phrase-game .llm-phrase-game__listen-replay-toggle__opt:focus-visible,
+.llm-phrase-game__listen-replay-toggle__opt:hover,
+.llm-phrase-game__listen-replay-toggle__opt:focus-visible {
+	color: #444 !important;
+	border-color: #999 !important;
+	outline: none;
+}
+
+.llm-phrase-game .llm-phrase-game__listen-replay-toggle__opt--active,
+.llm-phrase-game__listen-replay-toggle__opt--active {
+	border-color: #2271b1 !important;
+	color: #2271b1 !important;
+	font-weight: 600;
+}
+
 .llm-phrase-game__prompt {
 	margin: 0 0 0.85rem;
 	color: inherit;
