@@ -364,10 +364,12 @@
 		var analysisEl = qs(root, '.llm-phrase-game__analysis');
 		var grammarEl = qs(root, '.llm-phrase-game__grammar');
 		var targetShow = qs(root, '.llm-phrase-game__target');
+		var targetPeekBtn = qs(root, '.llm-phrase-game__peek-target');
 		var altShow = qs(root, '.llm-phrase-game__alt');
 		var bravoEl = qs(root, '.llm-phrase-game__bravo');
 		var labelMainEl = qs(root, '.llm-phrase-game__label-main');
 		var labelAltEl = qs(root, '.llm-phrase-game__label-alt');
+		var altToggleBtn = qs(root, '.llm-phrase-game__alt-toggle');
 		var doneEl = qs(root, '.llm-phrase-game__done');
 		var cardEl = qs(root, '.llm-phrase-game__card');
 		var yourPhraseWrap = qs(root, '.llm-phrase-game__your-phrase-wrap');
@@ -479,6 +481,9 @@
 	var MIC_FEEDBACK_DISPLAY_MS = 8000;
 	var listenReplayTimer = null;
 	var listenReplayAfterMic = false;
+	var targetPeekTimer = null;
+	var TARGET_PEEK_MS = 10000;
+	var TARGET_PEEK_FADE_MS = 400;
 
 	function normalizeSpeechSpace(text) {
 		return String(text || '').replace(/\s+/g, ' ').trim();
@@ -678,10 +683,8 @@
 		if (targetShow) {
 			targetShow.innerHTML = '';
 		}
-		if (altShow) {
-			altShow.innerHTML = '';
-			altShow.style.opacity = '0';
-		}
+		resetTargetPeek();
+		resetAltAccordion();
 		if (labelMainEl) {
 			labelMainEl.style.opacity = '0';
 		}
@@ -692,6 +695,135 @@
 			promptRewrite.textContent = '';
 			promptRewrite.style.opacity = '0';
 		}
+	}
+
+	function clearTargetPeekTimer() {
+		if (targetPeekTimer) {
+			clearTimeout(targetPeekTimer);
+			targetPeekTimer = null;
+		}
+	}
+
+	function fadeElementOpacity(el, opacity, dur) {
+		return new Promise(function (resolve) {
+			if (!el) {
+				resolve();
+				return;
+			}
+			var d = dur || TARGET_PEEK_FADE_MS;
+			el.style.transition = 'opacity ' + d + 'ms ease';
+			requestAnimationFrame(function () {
+				el.style.opacity = String(opacity);
+				setTimeout(resolve, d);
+			});
+		});
+	}
+
+	function resetTargetPeek() {
+		clearTargetPeekTimer();
+		if (targetShow) {
+			targetShow.hidden = false;
+			targetShow.style.opacity = '';
+			targetShow.style.transition = '';
+			targetShow.style.cursor = '';
+		}
+		if (targetPeekBtn) {
+			targetPeekBtn.hidden = true;
+		}
+	}
+
+	function hideTargetShowPeekButton() {
+		clearTargetPeekTimer();
+		if (!targetShow || !targetPeekBtn) {
+			return Promise.resolve();
+		}
+		return fadeElementOpacity(targetShow, 0, TARGET_PEEK_FADE_MS).then(function () {
+			targetShow.hidden = true;
+			targetPeekBtn.hidden = false;
+		});
+	}
+
+	function revealTargetFromPeekButton() {
+		if (!targetShow || !targetPeekBtn) {
+			return Promise.resolve();
+		}
+		targetPeekBtn.hidden = true;
+		targetShow.hidden = false;
+		targetShow.style.opacity = '0';
+		return fadeElementOpacity(targetShow, 1, TARGET_PEEK_FADE_MS);
+	}
+
+	function scheduleTargetAutoHide() {
+		clearTargetPeekTimer();
+		targetPeekTimer = setTimeout(function () {
+			targetPeekTimer = null;
+			hideTargetShowPeekButton();
+		}, TARGET_PEEK_MS);
+	}
+
+	function startTargetPeekCycle() {
+		clearTargetPeekTimer();
+		if (targetPeekBtn) {
+			targetPeekBtn.hidden = true;
+		}
+		if (targetShow) {
+			targetShow.hidden = false;
+			targetShow.style.opacity = '1';
+			targetShow.style.transition = '';
+			targetShow.style.cursor = 'pointer';
+		}
+		scheduleTargetAutoHide();
+	}
+
+	function onTargetPeekButtonClick() {
+		if (!targetShow || !targetPeekBtn) {
+			return;
+		}
+		if (!targetPeekBtn.hidden) {
+			revealTargetFromPeekButton().then(scheduleTargetAutoHide);
+		}
+	}
+
+	function onTargetPeekAreaClick() {
+		if (!targetShow || !targetPeekBtn) {
+			return;
+		}
+		if (targetShow.hidden || targetPeekBtn.hidden === false) {
+			return;
+		}
+		scheduleTargetAutoHide();
+	}
+
+	function resetAltAccordion() {
+		if (altShow) {
+			altShow.innerHTML = '';
+			altShow.hidden = true;
+			altShow.style.opacity = '';
+			altShow.style.transition = '';
+		}
+		if (altToggleBtn) {
+			altToggleBtn.hidden = true;
+			altToggleBtn.setAttribute('aria-expanded', 'false');
+			altToggleBtn.setAttribute(
+				'aria-label',
+				i18n.altToggleShow || 'Mostra note di approfondimento'
+			);
+		}
+	}
+
+	function setAltExpanded(expanded) {
+		if (!altShow || !altToggleBtn) {
+			return;
+		}
+		var open = !!expanded;
+		altShow.hidden = !open;
+		altToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+		altToggleBtn.setAttribute(
+			'aria-label',
+			open
+				? (i18n.altToggleHide || 'Nascondi note di approfondimento')
+				: (i18n.altToggleShow || 'Mostra note di approfondimento')
+		);
 	}
 
 	/**
@@ -808,22 +940,28 @@
 			addStep(function () {
 				if (!alive()) { return; }
 				if (labelMainEl) { labelMainEl.style.opacity = '1'; }
-				return typewriterHtmlInto(targetShow, target, alive, TYPE_TICK_MS);
+				return typewriterHtmlInto(targetShow, target, alive, TYPE_TICK_MS).then(function () {
+					if (!alive()) { return; }
+					startTargetPeekCycle();
+				});
 			});
 		} else if (labelMainEl) {
 			labelMainEl.style.opacity = '1';
 		}
 
-		/* ── Alternativa → fade ─────────────────────────────────────── */
+		/* ── Alternativa → accordion chiuso ─────────────────────────── */
 		if (alt) {
 			addStep(function () {
 				if (!alive()) { return; }
 				try { altShow.innerHTML = alt; } catch (e) { altShow.textContent = alt; }
+				setAltExpanded(false);
+				if (altToggleBtn) {
+					altToggleBtn.hidden = false;
+				}
 				if (labelAltEl) {
 					labelAltEl.style.transition = 'opacity 400ms ease';
 					labelAltEl.style.opacity = '1';
 				}
-				return fadeReveal(altShow, 400);
 			});
 		} else if (labelAltEl) {
 			labelAltEl.style.opacity = '1';
@@ -2241,10 +2379,9 @@
 		if (targetShow) {
 			targetShow.innerHTML = '';
 		}
+		resetTargetPeek();
 		if (altShow) {
-			altShow.innerHTML = '';
-			altShow.style.opacity = '';
-			altShow.style.transition = '';
+			resetAltAccordion();
 		}
 		if (labelMainEl) {
 			labelMainEl.style.opacity = '';
@@ -2433,6 +2570,20 @@
 		setMessage('');
 		hidePhase1Feedback();
 	});
+
+	if (altToggleBtn) {
+		altToggleBtn.addEventListener('click', function () {
+			setAltExpanded(altToggleBtn.getAttribute('aria-expanded') !== 'true');
+		});
+	}
+
+	if (targetPeekBtn) {
+		targetPeekBtn.addEventListener('click', onTargetPeekButtonClick);
+	}
+
+	if (targetShow) {
+		targetShow.addEventListener('click', onTargetPeekAreaClick);
+	}
 
 	btn1.addEventListener('click', function () {
 		stopSpeech();

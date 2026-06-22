@@ -179,8 +179,19 @@ class LLM_Story_Phrase_Game {
 					<div class="llm-phrase-game__grammar"></div>
 					<p class="llm-phrase-game__label-main"><strong><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'label_main' ) ); ?></strong></p>
 					<div class="llm-phrase-game__target"></div>
-					<p class="llm-phrase-game__label-alt"><strong><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'label_alt' ) ); ?></strong></p>
-					<div class="llm-phrase-game__alt"></div>
+					<button type="button" class="llm-phrase-game__listen-target llm-phrase-game__peek-target" hidden aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'peek_target_aria' ) ); ?>" title="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'peek_target_aria' ) ); ?>">
+						<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">
+							<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+						</span>
+						<span class="llm-phrase-game__listen-target-text"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'peek_target_label' ) ); ?></span>
+					</button>
+					<p class="llm-phrase-game__label-alt">
+						<strong><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'label_alt' ) ); ?></strong>
+						<button type="button" class="llm-phrase-game__alt-toggle" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-alt-panel" aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'alt_toggle_show' ) ); ?>" hidden>
+							<span class="llm-phrase-game__alt-toggle-arrow" aria-hidden="true">&#9660;</span>
+						</button>
+					</p>
+					<div class="llm-phrase-game__alt" id="<?php echo esc_attr( $uid ); ?>-alt-panel" hidden></div>
 				</div>
 				<div class="llm-phrase-game__phase llm-phrase-game__phase--2" hidden>
 					<label class="screen-reader-text" for="<?php echo esc_attr( $uid ); ?>-input2"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'sr_rewrite' ) ); ?></label>
@@ -373,6 +384,10 @@ class LLM_Story_Phrase_Game {
 			'listenReplayAfterMic' => LLM_Phrase_Game_I18n::get( 'listen_replay_after_mic' ),
 			'listenReplayYes'  => LLM_Phrase_Game_I18n::get( 'listen_replay_yes' ),
 			'listenReplayNo'   => LLM_Phrase_Game_I18n::get( 'listen_replay_no' ),
+			'altToggleShow'    => LLM_Phrase_Game_I18n::get( 'alt_toggle_show' ),
+			'altToggleHide'    => LLM_Phrase_Game_I18n::get( 'alt_toggle_hide' ),
+			'peekTargetLabel'  => LLM_Phrase_Game_I18n::get( 'peek_target_label' ),
+			'peekTargetAria'   => LLM_Phrase_Game_I18n::get( 'peek_target_aria' ),
 			),
 			'gameFinished'        => $game_finished,
 			'savedPhraseIndex'    => $saved_phrase_ix,
