@@ -458,13 +458,13 @@
 
 	var speechRec = null;
 	var speechBase = '';
+	var speechSessionStartValue = '';
 	var speechFinals = '';
 	var speechInterim = '';
 	var activeMicTa = null;
 	var activeMicBtn = null;
 	var micWordsThisPhrase = 0;
 	var micState = 'idle'; // 'idle' | 'pending' | 'listening'
-	var micLastFinalIndex = 0;
 	var micPermissionGranted = false;
 	var MIC_PENDING_MS = 2000;
 	var MIC_SESSION_MS = 6000;
@@ -481,80 +481,50 @@
 	var listenReplayTimer = null;
 	var listenReplayAfterMic = false;
 
-	/** Unisce testo finale evitando duplicati (motori mobile spesso inviano frasi cumulative). */
-	function mergeFinalTranscript(existing, chunk) {
-		chunk = String(chunk || '');
+	/** Ricostruisce testo finale e provvisorio dal buffer del motore (senza merge/dedupe). */
+	function buildSpeechTranscriptFromResults(results) {
+		var finals = '';
+		var interim = '';
+		var i;
+		if (!results || !results.length) {
+			return { finals: finals, interim: interim };
+		}
+		for (i = 0; i < results.length; i++) {
+			var tr = results[i][0].transcript;
+			if (results[i].isFinal) {
+				finals += tr;
+			} else {
+				interim += tr;
+			}
+		}
+		return { finals: finals, interim: interim };
+	}
+
+	function commitMicSpeechToBase(ta) {
+		var chunk = String(speechFinals || '') + String(speechInterim || '');
 		if (!chunk) {
-			return existing;
+			speechFinals = '';
+			speechInterim = '';
+			return;
 		}
-		if (!existing) {
-			return chunk;
+		speechBase += chunk;
+		if (speechBase.length && !/\s$/.test(speechBase)) {
+			speechBase += ' ';
 		}
-		var ex = existing.replace(/\s+/g, ' ').trim();
-		var ch = chunk.replace(/\s+/g, ' ').trim();
-		if (!ex) {
-			return chunk;
+		speechFinals = '';
+		speechInterim = '';
+		if (ta) {
+			ta.value = speechBase;
+			if (typeof ta._llmSyncClearBtn === 'function') {
+				ta._llmSyncClearBtn();
+			}
 		}
-		if (!ch) {
-			return existing;
-		}
-		if (ch === ex || existing.indexOf(chunk) !== -1) {
-			return existing;
-		}
-		/* Chunk cumulativo: contiene già tutto il testo precedente */
-		if (ch.indexOf(ex) === 0) {
-			return chunk;
-		}
-		if (ex.indexOf(ch) === 0) {
-			return existing;
-		}
-		if (existing.slice(-chunk.length) === chunk || existing.endsWith(ch)) {
-			return existing;
-		}
-		return existing + (/\s$/.test(existing) ? '' : ' ') + chunk;
 	}
 
 	function countNewWords(oldText, newText) {
 		var oldLen = tokenizeWords(oldText).length;
 		var newLen = tokenizeWords(newText).length;
 		return Math.max(0, newLen - oldLen);
-	}
-
-	function trimInterimOverlap(finals, interim) {
-		interim = String(interim || '');
-		if (!interim) {
-			return '';
-		}
-		if (!finals) {
-			return dedupeRepeatedPhrase(interim);
-		}
-		var f = finals.replace(/\s+/g, ' ').trim();
-		var it = interim.replace(/\s+/g, ' ').trim();
-		if (it.indexOf(f) === 0) {
-			var tail = it.slice(f.length).replace(/^\s+/, '');
-			return tail ? dedupeRepeatedPhrase(tail) : '';
-		}
-		if (f.indexOf(it) === 0 || f.endsWith(it)) {
-			return '';
-		}
-		return dedupeRepeatedPhrase(interim);
-	}
-
-	function dedupeRepeatedPhrase(text) {
-		text = String(text || '').replace(/\s+/g, ' ').trim();
-		if (!text) {
-			return '';
-		}
-		var words = text.split(/\s+/);
-		var w;
-		for (w = Math.floor(words.length / 2); w >= 1; w--) {
-			var first = words.slice(0, w).join(' ');
-			var second = words.slice(w, w * 2).join(' ');
-			if (first && first === second) {
-				return first;
-			}
-		}
-		return text;
 	}
 
 		var TTS_SLOW_RATE = 0.78;
@@ -1339,15 +1309,20 @@
 	}
 
 	function getMicSessionSpokenText() {
+		var ta = activeMicTa;
+		if (ta) {
+			var start = String(speechSessionStartValue || '');
+			var full = String(ta.value || '');
+			if (start && full.indexOf(start) === 0) {
+				return full.slice(start.length).trim();
+			}
+		}
 		var finals = String(speechFinals || '').trim();
 		var interim = String(speechInterim || '').trim();
 		if (finals && interim) {
 			return (finals + (/\s$/.test(finals) ? '' : ' ') + interim).trim();
 		}
-		if (finals) {
-			return finals;
-		}
-		return interim;
+		return (finals || interim).trim();
 	}
 
 	function shortenHeardText(text, maxLen) {
@@ -1550,7 +1525,6 @@
 			micSessionTimer = null;
 		}
 		micState = 'idle';
-		micLastFinalIndex = 0;
 		speechFinals = '';
 		speechInterim = '';
 		if (speechRec) {
@@ -1746,11 +1720,11 @@
 		micSessionActive = true;
 		activeMicTa = textarea;
 		activeMicBtn = micBtn;
+		speechSessionStartValue = textarea.value;
 		speechBase = textarea.value;
 		if (speechBase.length && !/\s$/.test(speechBase)) { speechBase += ' '; }
 		speechFinals = '';
 		speechInterim = '';
-		micLastFinalIndex = 0;
 		micState = 'pending';
 		micPendingPhaseDone = false;
 		micRecognitionStarted = false;
@@ -1781,24 +1755,12 @@
 
 			rec.onresult = function (ev) {
 				if (!micSessionActive) { return; }
-				var interim = '';
 				var prevFinals = speechFinals;
-				var i;
-				for (i = ev.resultIndex; i < ev.results.length; i++) {
-					var tr = ev.results[i][0].transcript;
-					if (ev.results[i].isFinal) {
-						if (i >= micLastFinalIndex) {
-							speechFinals = mergeFinalTranscript(speechFinals, tr);
-							micLastFinalIndex = i + 1;
-						}
-					} else {
-						interim += tr;
-					}
-				}
+				var built = buildSpeechTranscriptFromResults(ev.results);
+				speechFinals = built.finals;
+				speechInterim = built.interim;
 				micWordsThisPhrase += countNewWords(prevFinals, speechFinals);
-				interim = trimInterimOverlap(speechFinals, interim);
-				speechInterim = interim;
-				textarea.value = speechBase + speechFinals + interim;
+				textarea.value = speechBase + speechFinals + speechInterim;
 				if (typeof textarea._llmSyncClearBtn === 'function') {
 					textarea._llmSyncClearBtn();
 				}
@@ -1818,10 +1780,11 @@
 
 			rec.onend = function () {
 				if (!micSessionActive) { return; }
+				commitMicSpeechToBase(textarea);
 				try {
 					rec.start();
 				} catch (e) {
-					/* Il timer da 4 secondi chiude la sessione */
+					/* Il timer chiude la sessione */
 				}
 			};
 		}
