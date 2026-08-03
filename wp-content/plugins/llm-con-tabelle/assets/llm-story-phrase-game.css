@@ -1365,6 +1365,41 @@
 	display: none;
 }
 
+/* Gioca al contrario: niente microfono; peek originale sotto il textarea. */
+.llm-phrase-game--mode-play-inverted .llm-phrase-game__mic,
+.llm-phrase-game--mode-play-inverted .llm-phrase-game__mic-status,
+.llm-phrase-game--mode-play-inverted .llm-phrase-game__mic-countdown {
+	display: none !important;
+}
+
+.llm-phrase-game__inverted-hint {
+	margin-top: 0.85rem;
+}
+
+.llm-phrase-game__inverted-hint-panel {
+	margin-top: 0.55rem;
+	padding: 0.65rem 0.75rem;
+	border-radius: 8px;
+	background: #f6f6f8;
+	color: #1a1a1a;
+	font-size: 1rem;
+	line-height: 1.45;
+	text-align: center;
+}
+
+.llm-phrase-game__inverted-hint-panel[hidden] {
+	display: none !important;
+}
+
+.llm-phrase-game__inverted-hint-answer {
+	margin: 0;
+}
+
+.llm-learning-mode__extras--disabled {
+	opacity: 0.45;
+	pointer-events: none;
+}
+
 .llm-phrase-game .llm-phrase-game__tool-accordion-toggle,
 .llm-phrase-game__tool-accordion-toggle {
 	-webkit-appearance: none;

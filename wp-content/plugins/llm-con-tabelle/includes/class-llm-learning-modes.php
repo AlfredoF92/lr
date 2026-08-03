@@ -40,6 +40,9 @@ class LLM_Learning_Modes {
 	/** Fase unica senza controlli: si avanza sempre. */
 	const MODE_READ_GO_FAST = 'read_go_fast';
 
+	/** Fase unica invertita: vedi la traduzione, indovina l'originale. */
+	const MODE_PLAY_INVERTED = 'play_inverted';
+
 	public static function init() {
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( __CLASS__, 'ajax_save' ) );
 	}
@@ -65,6 +68,11 @@ class LLM_Learning_Modes {
 				'id'          => self::MODE_READ_GO_FAST,
 				'label'       => LLM_Phrase_Game_I18n::get( 'mode_read_go_fast_label' ),
 				'description' => LLM_Phrase_Game_I18n::get( 'mode_read_go_fast_desc' ),
+			),
+			array(
+				'id'          => self::MODE_PLAY_INVERTED,
+				'label'       => LLM_Phrase_Game_I18n::get( 'mode_play_inverted_label' ),
+				'description' => LLM_Phrase_Game_I18n::get( 'mode_play_inverted_desc' ),
 			),
 		);
 
@@ -184,6 +192,9 @@ class LLM_Learning_Modes {
 	 * @return array<int, string>
 	 */
 	public static function current_options() {
+		if ( self::disables_options( self::current() ) ) {
+			return array();
+		}
 		if ( is_user_logged_in() ) {
 			return self::get_options_for_user( get_current_user_id() );
 		}
@@ -277,7 +288,8 @@ class LLM_Learning_Modes {
 	 * @return bool
 	 */
 	public static function skips_validation( $mode_id ) {
-		$skips = self::MODE_READ_GO_FAST === sanitize_key( (string) $mode_id );
+		$mode_id = sanitize_key( (string) $mode_id );
+		$skips   = in_array( $mode_id, array( self::MODE_READ_GO_FAST, self::MODE_PLAY_INVERTED ), true );
 
 		/**
 		 * Permette a modalità registrate da terzi di saltare la validazione.
@@ -286,6 +298,23 @@ class LLM_Learning_Modes {
 		 * @param string $mode_id
 		 */
 		return (bool) apply_filters( 'llm_learning_mode_skips_validation', $skips, $mode_id );
+	}
+
+	/**
+	 * Se la modalità disattiva tutti gli strumenti utili.
+	 *
+	 * @param string $mode_id
+	 * @return bool
+	 */
+	public static function disables_options( $mode_id ) {
+		$mode_id  = sanitize_key( (string) $mode_id );
+		$disabled = self::MODE_PLAY_INVERTED === $mode_id;
+
+		/**
+		 * @param bool   $disabled
+		 * @param string $mode_id
+		 */
+		return (bool) apply_filters( 'llm_learning_mode_disables_options', $disabled, $mode_id );
 	}
 
 	/**
@@ -322,6 +351,7 @@ class LLM_Learning_Modes {
 			'options'          => self::options(),
 			'currentOptions'   => self::current_options(),
 			'optionsStorageKey' => self::OPTIONS_STORAGE_KEY,
+			'modeDisablesOptions' => self::MODE_PLAY_INVERTED,
 			'savedMsg'    => LLM_Phrase_Game_I18n::get( 'learning_mode_saved' ),
 			'errorMsg'    => LLM_Phrase_Game_I18n::get( 'learning_mode_error' ),
 		);
@@ -343,6 +373,9 @@ class LLM_Learning_Modes {
 		}
 
 		$posted_options = isset( $_POST['options'] ) ? wp_unslash( $_POST['options'] ) : array();
+		if ( self::disables_options( $mode_id ) ) {
+			$posted_options = array();
+		}
 		self::set_options_for_user( get_current_user_id(), $posted_options );
 
 		wp_send_json_success(

@@ -203,6 +203,11 @@ class LLM_Story_Phrase_Game {
 								<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
 								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 							</button>
+							<button type="button" class="llm-phrase-game__tool-accordion-toggle llm-phrase-game__inverted-hint" hidden aria-expanded="false">
+								<span class="llm-phrase-game__tool-accordion-toggle-text llm-phrase-game__inverted-hint-text-label"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'play_inverted_hint' ) ); ?></span>
+								<span class="llm-phrase-game__tool-accordion-chevron" aria-hidden="true"></span>
+							</button>
+							<div class="llm-phrase-game__inverted-hint-panel" hidden></div>
 							<?php echo self::render_random_words_block( $uid, '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 							<?php echo self::render_extra_chars_block( $uid, '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 						</div>
@@ -514,6 +519,8 @@ class LLM_Story_Phrase_Game {
 				'phrases'         => $boot,
 				'targetLangLabel' => LLM_Phrase_Game_I18n::target_lang_label_for_ui( $target_code ),
 				'targetLangCode'  => sanitize_key( $target_code ),
+				'interfaceLangLabel' => LLM_Phrase_Game_I18n::target_lang_label_for_ui( LLM_Phrase_Game_I18n::lang() ),
+				'interfaceLangCode'  => LLM_Phrase_Game_I18n::lang(),
 				'i18n'                => array(
 				'translatePrompt'  => LLM_Phrase_Game_I18n::get( 'translate_prompt' ),
 				'rewritePrompt'    => LLM_Phrase_Game_I18n::get( 'rewrite_prompt' ),
@@ -560,6 +567,14 @@ class LLM_Story_Phrase_Game {
 			'readGoFastExact'    => LLM_Phrase_Game_I18n::get( 'read_go_fast_exact' ),
 			'readGoFastAlmost'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_almost' ),
 			'readGoFastComplete' => LLM_Phrase_Game_I18n::get( 'read_go_fast_complete' ),
+			'playInvertedPrompt' => LLM_Phrase_Game_I18n::get( 'play_inverted_prompt' ),
+			'playInvertedNext'   => LLM_Phrase_Game_I18n::get( 'play_inverted_next' ),
+			'playInvertedHint'   => LLM_Phrase_Game_I18n::get( 'play_inverted_hint' ),
+			'playInvertedHintHide' => LLM_Phrase_Game_I18n::get( 'play_inverted_hint_hide' ),
+			'playInvertedTarget' => LLM_Phrase_Game_I18n::get( 'play_inverted_target' ),
+			'playInvertedExact'  => LLM_Phrase_Game_I18n::get( 'play_inverted_exact' ),
+			'playInvertedAlmost' => LLM_Phrase_Game_I18n::get( 'play_inverted_almost' ),
+			'playInvertedComplete' => LLM_Phrase_Game_I18n::get( 'play_inverted_complete' ),
 			'extraCharsLower'    => LLM_Phrase_Game_I18n::get( 'extra_chars_lower' ),
 			'extraCharsUpper'    => LLM_Phrase_Game_I18n::get( 'extra_chars_upper' ),
 			'extraCharsSymbols'  => LLM_Phrase_Game_I18n::get( 'extra_chars_symbols' ),

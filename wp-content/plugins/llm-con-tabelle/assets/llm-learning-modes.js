@@ -112,6 +112,10 @@
 		}
 	}
 
+	function modeDisablesOptions(mode) {
+		return !!(cfg && cfg.modeDisablesOptions && mode === cfg.modeDisablesOptions);
+	}
+
 	function syncRootToOptions(root, ids) {
 		root.dataset.currentOptions = ids.join(',');
 		root.querySelectorAll('.llm-learning-mode__check').forEach(function (check) {
@@ -120,7 +124,30 @@
 		});
 	}
 
+	/** In "Gioca al contrario" gli strumenti utili si azzerano e restano disabilitati. */
+	function applyOptionsAvailability(root, mode) {
+		var disabled = modeDisablesOptions(mode);
+		var extras = root.querySelector('.llm-learning-mode__extras');
+		if (extras) {
+			extras.classList.toggle('llm-learning-mode__extras--disabled', disabled);
+			extras.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+		}
+		root.querySelectorAll('.llm-learning-mode__check').forEach(function (check) {
+			check.disabled = disabled;
+			if (disabled) {
+				check.checked = false;
+				syncOptionActive(check);
+			}
+		});
+		if (disabled) {
+			root.dataset.currentOptions = '';
+		}
+	}
+
 	function selectedOptions(root) {
+		if (modeDisablesOptions(selectedMode(root))) {
+			return [];
+		}
 		var ids = [];
 		root.querySelectorAll('.llm-learning-mode__check:checked').forEach(function (check) {
 			ids.push(check.value);
@@ -137,8 +164,10 @@
 		if (!overlay) { return; }
 		lastFocused = document.activeElement;
 		setMessage(root, '', false);
-		syncRootToMode(root, root.dataset.currentMode || resolveMode());
-		syncRootToOptions(root, resolveOptions());
+		var openMode = root.dataset.currentMode || resolveMode();
+		syncRootToMode(root, openMode);
+		syncRootToOptions(root, modeDisablesOptions(openMode) ? [] : resolveOptions());
+		applyOptionsAvailability(root, openMode);
 		overlay.hidden = false;
 		var checked = overlay.querySelector('.llm-learning-mode__radio:checked');
 		if (checked) { checked.focus(); }
@@ -186,6 +215,10 @@
 		}
 
 		setBusy(root, true);
+
+		if (modeDisablesOptions(mode)) {
+			options = [];
+		}
 
 		if (!cfg.isLoggedIn) {
 			writeStoredMode(mode);
@@ -261,6 +294,10 @@
 		document.addEventListener('change', function (e) {
 			var check = e.target.closest('.llm-learning-mode__check');
 			if (check) {
+				if (check.disabled) {
+					check.checked = false;
+					return;
+				}
 				syncOptionActive(check);
 				return;
 			}
@@ -269,6 +306,10 @@
 			var root = radio.closest('.llm-learning-mode');
 			if (!root) { return; }
 			root.querySelectorAll('.llm-learning-mode__radio').forEach(syncOptionActive);
+			applyOptionsAvailability(root, radio.value);
+			if (!modeDisablesOptions(radio.value)) {
+				syncRootToOptions(root, resolveOptions());
+			}
 		});
 
 		document.addEventListener('keydown', function (e) {

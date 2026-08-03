@@ -539,6 +539,9 @@
 	var notesToggleBtn  = qs(root, '.llm-phrase-game__notes-toggle');
 	var notesToggleText = qs(root, '.llm-phrase-game__notes-toggle-text');
 	var notesPanel      = qs(root, '.llm-phrase-game__notes-panel');
+	var invertedHintBtn = qs(root, '.llm-phrase-game__inverted-hint');
+	var invertedHintLabel = qs(root, '.llm-phrase-game__inverted-hint-text-label');
+	var invertedHintPanel = qs(root, '.llm-phrase-game__inverted-hint-panel');
 
 	function randomWordsBlock(suffix, inputEl) {
 		var wrap = qs(root, '.llm-phrase-game__random-words--' + suffix);
@@ -570,9 +573,10 @@
 			return block.wrap && block.toggle && block.panel;
 		});
 
-		var MODE_LOVEREWRITE  = 'loverewrite';
-		var MODE_RESOLVE_GO   = 'resolve_go';
-		var MODE_READ_GO_FAST = 'read_go_fast';
+		var MODE_LOVEREWRITE   = 'loverewrite';
+		var MODE_RESOLVE_GO    = 'resolve_go';
+		var MODE_READ_GO_FAST  = 'read_go_fast';
+		var MODE_PLAY_INVERTED = 'play_inverted';
 
 		/* Utente loggato: vince il profilo. Ospite: localStorage, poi default. */
 		function resolveLearningMode() {
@@ -595,10 +599,11 @@
 		if (!learningMode) {
 			learningMode = MODE_LOVEREWRITE;
 		}
-		var isResolveGo   = learningMode === MODE_RESOLVE_GO;
-		var isReadGoFast  = learningMode === MODE_READ_GO_FAST;
+		var isResolveGo    = learningMode === MODE_RESOLVE_GO;
+		var isReadGoFast   = learningMode === MODE_READ_GO_FAST;
+		var isPlayInverted = learningMode === MODE_PLAY_INVERTED;
 		/* Modalità con la sola fase 1: stesso layout, cambia solo cosa succede al click. */
-		var isSinglePhase = isResolveGo || isReadGoFast;
+		var isSinglePhase = isResolveGo || isReadGoFast || isPlayInverted;
 		root.classList.add('llm-phrase-game--mode-' + learningMode.replace(/_/g, '-'));
 		if (isSinglePhase) {
 			root.classList.add('llm-phrase-game--single-phase');
@@ -607,12 +612,18 @@
 		/* Dove finiscono i messaggi di completamento frase. */
 		var completionMsgEl = (isSinglePhase && messageSoloEl) ? messageSoloEl : messagePhase2El;
 
-		var introPromptKey = isReadGoFast
-			? 'readGoFastPrompt'
-			: (isResolveGo ? 'resolveGoPrompt' : 'translatePrompt');
+		var interfaceLang = cfg.interfaceLangLabel || '';
+		var introPromptKey = isPlayInverted
+			? 'playInvertedPrompt'
+			: (isReadGoFast
+				? 'readGoFastPrompt'
+				: (isResolveGo ? 'resolveGoPrompt' : 'translatePrompt'));
 
 		/* Opzioni di aiuto: stessa regola della modalità, profilo o localStorage. */
 		function resolveLearningOptions() {
+			if (isPlayInverted) {
+				return [];
+			}
 			if (cfg.learningModeIsSaved) {
 				return Array.isArray(cfg.learningOptions) ? cfg.learningOptions : [];
 			}
@@ -997,9 +1008,22 @@
 			skipYourPhrase: true,
 			skipBravo: true,
 			grammar: (p && p.grammar) || '',
-			target: (p && p.target) || '',
+			/* Gioca al contrario: niente traduzione principale negli appunti (è già la frase proposta). */
+			target: isPlayInverted ? '' : ((p && p.target) || ''),
 			alt: (p && p.alt) || ''
 		});
+		if (isPlayInverted && labelMainEl) {
+			labelMainEl.hidden = true;
+			if (targetShow) {
+				targetShow.hidden = true;
+				targetShow.innerHTML = '';
+			}
+			if (targetPeekBtn) {
+				targetPeekBtn.hidden = true;
+			}
+		} else if (labelMainEl) {
+			labelMainEl.hidden = false;
+		}
 	}
 
 	function appendWordToInput(inputEl, word) {
@@ -1214,6 +1238,37 @@
 		notesLoaded = false;
 		if (notesToggleBtn && notesPanel) {
 			setNotesOpen(false);
+		}
+		if (labelMainEl) {
+			labelMainEl.hidden = false;
+		}
+	}
+
+	function setInvertedHintOpen(open) {
+		if (!invertedHintBtn || !invertedHintPanel) {
+			return;
+		}
+		var isOpen = !!open;
+		invertedHintBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+		invertedHintPanel.hidden = !isOpen;
+		if (invertedHintLabel) {
+			invertedHintLabel.textContent = isOpen
+				? (i18n.playInvertedHintHide || '')
+				: (i18n.playInvertedHint || '');
+		}
+		if (isOpen) {
+			var p = phrases[phraseIx];
+			invertedHintPanel.innerHTML = '';
+			var line = document.createElement('div');
+			line.className = 'llm-phrase-game__inverted-hint-answer';
+			try {
+				line.innerHTML = (p && p.interface) ? String(p.interface) : '';
+			} catch (e) {
+				line.textContent = (p && p.interface) ? String(p.interface) : '';
+			}
+			invertedHintPanel.appendChild(line);
+		} else {
+			invertedHintPanel.innerHTML = '';
 		}
 	}
 
@@ -1443,7 +1498,7 @@
 					startTargetPeekCycle();
 				});
 			});
-		} else if (labelMainEl) {
+		} else if (labelMainEl && !isPlayInverted) {
 			labelMainEl.style.opacity = '1';
 		}
 
@@ -2659,7 +2714,9 @@
 		function t(key, a, b) {
 			var s = i18n[key] || '';
 			if (a !== undefined && b !== undefined) {
-				return s.replace('%1$d', String(a)).replace('%2$d', String(b));
+				return s
+					.replace('%1$d', String(a)).replace('%2$d', String(b))
+					.replace('%1$s', String(a)).replace('%2$s', String(b));
 			}
 			if (a !== undefined) {
 				return s.replace('%s', String(a));
@@ -2705,11 +2762,12 @@
 		}
 
 		function syncInputPlaceholders() {
+			var writeLang = isPlayInverted ? (interfaceLang || targetLang) : targetLang;
 			if (input1) {
-				input1.placeholder = t('inputPlaceholderPhase1', targetLang);
+				input1.placeholder = t('inputPlaceholderPhase1', writeLang);
 			}
 			if (input2) {
-				input2.placeholder = t('inputPlaceholderPhase2', targetLang);
+				input2.placeholder = t('inputPlaceholderPhase2', writeLang);
 			}
 		}
 
@@ -2853,6 +2911,7 @@
 		resetNotesPanel();
 		resetRandomWords();
 		resetExtraChars();
+		setInvertedHintOpen(false);
 		cancelTts();
 		cancelAnalysisStream();
 			cancelStoryStream();
@@ -2944,9 +3003,13 @@
 				promptRewrite.textContent = '';
 			}
 			renderProgress();
+			var promptText = isPlayInverted
+				? t('playInvertedPrompt', targetLang, interfaceLang || targetLang)
+				: t(introPromptKey, targetLang);
+			var promptPhrase = isPlayInverted ? (p.target || '') : (p.interface || '');
 			runPhraseIntroTypewriter(
-				p.interface || '',
-				t(introPromptKey, targetLang),
+				promptPhrase,
+				promptText,
 				introId
 			).then(function () {
 				if (phraseIntroRun !== introId) {
@@ -3033,6 +3096,10 @@
 
 		if (isReadGoFast) {
 			handleReadGoFastSubmit();
+			return;
+		}
+		if (isPlayInverted) {
+			handlePlayInvertedSubmit();
 			return;
 		}
 
@@ -3463,6 +3530,46 @@
 			}, true /* bypass */);
 		}
 
+		/** Modalità "Gioca al contrario": vedi target, indovina originale (interface). */
+		function handlePlayInvertedSubmit() {
+			syncStrictAccentsFromDom();
+			setMessage('');
+			setMessagePhase2('', '');
+			clearDbStatus();
+			setInvertedHintOpen(false);
+			btn1.disabled = true;
+			input1.readOnly = true;
+			setNotesOpen(false);
+
+			var txt = (input1.value || '').trim();
+			var p = phrases[phraseIx];
+			var originalRef = p && p.interface != null ? String(p.interface) : '';
+
+			var opening = '';
+			if (!txt) {
+				opening = i18n.playInvertedTarget || '';
+			} else if (phase2PassesLocal(txt, originalRef, PHASE2_SIM, PHASE2_WR)) {
+				opening = i18n.playInvertedExact || i18n.bravoCorrect || '';
+			} else {
+				opening = i18n.playInvertedAlmost || i18n.playInvertedTarget || '';
+			}
+
+			postCheck(2, txt, false, function (json) {
+				runFeedbackAfterSave(json, [
+					opening,
+					{ text: originalRef, html: true },
+					i18n.playInvertedComplete || i18n.phraseCompletePoints || ''
+				], {
+					holdMs: 1200,
+					scrollTarget: completionMsgEl || phase1,
+					onFail: function () {
+						btn1.disabled = false;
+						input1.readOnly = false;
+					}
+				});
+			}, true /* bypass */);
+		}
+
 		btn2.addEventListener('click', function () {
 			stopSpeech();
 			cancelTts();
@@ -3508,6 +3615,19 @@
 
 	if (isReadGoFast && btn1 && i18n.readGoFastNext) {
 		btn1.textContent = i18n.readGoFastNext;
+	}
+
+	if (isPlayInverted) {
+		if (btn1 && i18n.playInvertedNext) {
+			btn1.textContent = i18n.playInvertedNext;
+		}
+		if (invertedHintBtn) {
+			invertedHintBtn.hidden = false;
+			invertedHintBtn.addEventListener('click', function () {
+				var open = invertedHintBtn.getAttribute('aria-expanded') === 'true';
+				setInvertedHintOpen(!open);
+			});
+		}
 	}
 
 	if (randomWordsOn) {
