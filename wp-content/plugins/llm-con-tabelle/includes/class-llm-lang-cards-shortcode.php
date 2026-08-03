@@ -118,8 +118,7 @@ class LLM_Lang_Cards_Shortcode {
 		}
 
 		// Salva cookie (loggati e ospiti).
-		self::set_cookie( self::COOKIE_KNOWN, $known );
-		self::set_cookie( self::COOKIE_LEARNING, $learning );
+		self::persist_pair_cookies( $known, $learning );
 
 		// Redirect alla pagina della coppia.
 		$redirect = ( '' !== $dest )
@@ -276,7 +275,29 @@ class LLM_Lang_Cards_Shortcode {
 	/* Utility                                                              */
 	/* ------------------------------------------------------------------ */
 
+	/**
+	 * Salva la coppia linguistica nei cookie (30 giorni).
+	 * Usato anche da [llm_home_redirect] per ospiti e ritorno sul sito.
+	 *
+	 * @param string $known    Codice lingua conosciuta.
+	 * @param string $learning Codice lingua da imparare.
+	 */
+	public static function persist_pair_cookies( $known, $learning ) {
+		$known    = sanitize_key( (string) $known );
+		$learning = sanitize_key( (string) $learning );
+		if ( ! LLM_Languages::is_valid( $known ) || ! LLM_Languages::is_valid( $learning ) ) {
+			return;
+		}
+		self::set_cookie( self::COOKIE_KNOWN, $known );
+		self::set_cookie( self::COOKIE_LEARNING, $learning );
+		$_COOKIE[ self::COOKIE_KNOWN ]    = $known;
+		$_COOKIE[ self::COOKIE_LEARNING ] = $learning;
+	}
+
 	private static function set_cookie( $name, $value ) {
+		if ( headers_sent() ) {
+			return;
+		}
 		setcookie(
 			$name,
 			$value,
