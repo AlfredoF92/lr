@@ -45,6 +45,7 @@ class LLM_Story_Phrase_Game {
 		add_action( 'wp_ajax_llm_phrase_game_check', array( __CLASS__, 'ajax_check' ) );
 		add_action( 'wp_ajax_nopriv_llm_phrase_game_check', array( __CLASS__, 'ajax_check' ) );
 		add_action( 'wp_ajax_llm_phrase_game_restart', array( __CLASS__, 'ajax_restart' ) );
+		add_action( 'wp_ajax_nopriv_llm_phrase_game_restart', array( __CLASS__, 'ajax_restart' ) );
 	}
 
 	/**
@@ -274,9 +275,7 @@ class LLM_Story_Phrase_Game {
 			</div>
 		<div class="llm-phrase-game__done" hidden>
 			<p class="llm-phrase-game__done-text"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'done_all' ) ); ?></p>
-			<?php if ( is_user_logged_in() ) : ?>
 			<button type="button" class="llm-phrase-game__restart-btn button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'story_progress_restart' ) ); ?></button>
-			<?php endif; ?>
 		</div>
 		<?php echo self::render_learning_mode_ui( $uid ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 		</div>
@@ -413,8 +412,34 @@ class LLM_Story_Phrase_Game {
 						}
 					}
 				}
-		} else {
-			// Mostra tutte le frasi dall'indice 0 al checkpoint: phrase_done è la fonte di verità.
+			} else {
+				// Mostra tutte le frasi dall'indice 0 al checkpoint: phrase_done è la fonte di verità.
+				$show = min( $saved_phrase_ix, $n_phrases );
+				for ( $ix = 0; $ix < $show; $ix++ ) {
+					if ( isset( $phrases[ $ix ]['target'] ) ) {
+						$completed_targets[] = array(
+							'target'    => (string) $phrases[ $ix ]['target'],
+							'interface' => isset( $phrases[ $ix ]['interface'] ) ? (string) $phrases[ $ix ]['interface'] : '',
+						);
+					}
+				}
+			}
+		} elseif ( 0 === $uid && $n_phrases > 0 ) {
+			/* Ospite: cookie anonimo + tabella guest progress. */
+			$guest_id = LLM_Guest_Story_Progress::get_or_create_id();
+			$resolved = LLM_Guest_Story_Progress::resolve( $guest_id, $story_id, $n_phrases );
+			if ( $resolved && ! empty( $resolved['finished'] ) ) {
+				$game_finished   = true;
+				$saved_phrase_ix = $n_phrases;
+			} elseif ( $resolved ) {
+				$saved_phrase_ix = (int) $resolved['phrase_index'];
+				$saved_step      = (int) $resolved['step'];
+				if ( LLM_Story_Game_Progress::STEP_REWRITE === $saved_step && $saved_phrase_ix >= 0 && $saved_phrase_ix < $n_phrases ) {
+					LLM_Guest_Story_Progress::upsert( $guest_id, $story_id, $saved_phrase_ix, LLM_Story_Game_Progress::STEP_TRANSLATE );
+					$saved_step = LLM_Story_Game_Progress::STEP_TRANSLATE;
+				}
+			}
+
 			$show = min( $saved_phrase_ix, $n_phrases );
 			for ( $ix = 0; $ix < $show; $ix++ ) {
 				if ( isset( $phrases[ $ix ]['target'] ) ) {
@@ -424,7 +449,6 @@ class LLM_Story_Phrase_Game {
 					);
 				}
 			}
-		}
 		}
 
 		wp_register_style(
@@ -602,6 +626,16 @@ class LLM_Story_Phrase_Game {
 					$index,
 					LLM_Story_Game_Progress::STEP_REWRITE
 				);
+			} else {
+				$guest_id = LLM_Guest_Story_Progress::get_or_create_id();
+				if ( '' !== $guest_id ) {
+					LLM_Guest_Story_Progress::upsert(
+						$guest_id,
+						$story_id,
+						$index,
+						LLM_Story_Game_Progress::STEP_REWRITE
+					);
+				}
 			}
 
 			wp_send_json_success(
@@ -644,6 +678,16 @@ class LLM_Story_Phrase_Game {
 					LLM_Story_Game_Progress::delete( $uid, $story_id );
 				}
 				$phrases_done = LLM_Story_Game_Progress::bar_completed_count( $uid, $story_id, $phr_total );
+			} else {
+				$guest_id = LLM_Guest_Story_Progress::get_or_create_id();
+				if ( '' !== $guest_id ) {
+					$phrases_done = LLM_Guest_Story_Progress::record_phrase_completion(
+						$guest_id,
+						$story_id,
+						$index,
+						$phr_total
+					);
+				}
 			}
 
 			wp_send_json_success(
@@ -767,14 +811,10 @@ class LLM_Story_Phrase_Game {
 	}
 
 	/**
-	 * AJAX: ricomincia la storia dalla prima frase (solo utenti loggati).
+	 * AJAX: ricomincia la storia dalla prima frase (loggati e ospiti).
 	 */
 	public static function ajax_restart() {
 		check_ajax_referer( 'llm_phrase_game', 'nonce' );
-
-		if ( ! is_user_logged_in() ) {
-			wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
-		}
 
 		$story_id = isset( $_POST['story_id'] ) ? absint( wp_unslash( $_POST['story_id'] ) ) : 0;
 		if ( ! $story_id ) {
@@ -786,7 +826,14 @@ class LLM_Story_Phrase_Game {
 			wp_send_json_error( array( 'message' => LLM_Phrase_Game_I18n::get( 'invalid_story' ) ), 400 );
 		}
 
-		LLM_User_Stats::reset_story_progress_for_user( get_current_user_id(), $story_id );
+		if ( is_user_logged_in() ) {
+			LLM_User_Stats::reset_story_progress_for_user( get_current_user_id(), $story_id );
+		} else {
+			$guest_id = LLM_Guest_Story_Progress::get_or_create_id();
+			if ( '' !== $guest_id ) {
+				LLM_Guest_Story_Progress::reset_story( $guest_id, $story_id );
+			}
+		}
 		wp_send_json_success();
 	}
 

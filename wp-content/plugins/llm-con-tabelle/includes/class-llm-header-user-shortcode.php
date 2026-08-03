@@ -33,7 +33,7 @@ class LLM_Header_User_Shortcode {
 				'login_path'    => '/login',
 				'account_path'  => '/area-personale',
 				'guest_path'    => '/',
-				'guest_label'   => 'Ciao!',
+				'guest_label'   => 'Accedi',
 				'login_label'   => '',
 				'greeting'      => '',
 			),
@@ -50,12 +50,13 @@ class LLM_Header_User_Shortcode {
 
 		$account_path = self::normalize_path( (string) $atts['account_path'] );
 		$guest_path   = self::normalize_path( (string) $atts['guest_path'] );
-		$guest_url    = esc_url( home_url( $guest_path ) );
+		$login_path   = self::normalize_path( (string) $atts['login_path'] );
+		$guest_url    = esc_url( home_url( $login_path ? $login_path : $guest_path ) );
 		$account_url  = esc_url( home_url( $account_path ) );
 
 		$guest_label = trim( (string) $atts['guest_label'] );
 		if ( '' === $guest_label ) {
-			$guest_label = 'Ciao!';
+			$guest_label = 'Accedi';
 		}
 
 		$greeting_tpl = (string) $atts['greeting'];

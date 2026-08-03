@@ -3167,7 +3167,7 @@
 				});
 		}
 
-		/** Modalità "Risolvi e vai": fase unica, validazione sulla traduzione corretta. */
+		/** Modalità "Risolvi e vai": validazione locale, poi AJAX-first, status DB, poi feedback. */
 		function handleResolveGoSubmit() {
 			syncStrictAccentsFromDom();
 
@@ -3184,17 +3184,23 @@
 			}
 
 			setMessagePhase2('', '');
+			clearDbStatus();
 			btn1.disabled = true;
 			input1.readOnly = true;
 			setNotesOpen(false);
 
-			runPhraseCompletionFlow(txt, false, {
-				showMicMessage: false,
-				scrollTarget: completionMsgEl || phase1,
-				onFail: function () {
-					btn1.disabled = false;
-					input1.readOnly = false;
-				}
+			postCheck(2, txt, false, function (json) {
+				runFeedbackAfterSave(json, [
+					i18n.bravoCorrect || '',
+					i18n.phraseCompletePoints || '',
+					i18n.storyContinue || ''
+				], {
+					scrollTarget: completionMsgEl || phase1,
+					onFail: function () {
+						btn1.disabled = false;
+						input1.readOnly = false;
+					}
+				});
 			});
 		}
 
@@ -3224,6 +3230,101 @@
 			dbStatusEl.textContent = '';
 		}
 
+		/**
+		 * Helper condiviso per i flussi AJAX-first (Risolvi e vai, Read and go fast).
+		 * Mostra il messaggio DB in fade, poi la sequenza di messaggi, poi gestisce story line e avanzamento.
+		 *
+		 * @param {object} json      Risposta postCheck
+		 * @param {Array}  messages  Array di stringhe o {text, html}
+		 * @param {object} opts      { holdMs, scrollTarget, onFail }
+		 */
+		function runFeedbackAfterSave(json, messages, opts) {
+			opts = opts || {};
+			var onFail = typeof opts.onFail === 'function' ? opts.onFail : function () {};
+			var scrollTarget = opts.scrollTarget || completionMsgEl || phase2;
+			var holdMs = typeof opts.holdMs === 'number' ? opts.holdMs : 3000;
+
+			if (!json || !json.success) {
+				var errMsg = (json && json.data && json.data.message)
+					|| i18n.readGoFastSaveError
+					|| i18n.ajaxError
+					|| '';
+				showDbStatus(errMsg, true, 2500).then(function () {
+					onFail(errMsg);
+				});
+				return;
+			}
+
+			var d = json.data || {};
+
+			/* Aggiorna progress bar */
+			if (typeof window.llmUpdateStoryProgressBar === 'function' && d.phrases_total != null) {
+				var doneBar = parseInt(d.phrases_done, 10);
+				if (isNaN(doneBar)) { doneBar = 0; }
+				var totalBar = parseInt(d.phrases_total, 10);
+				if (isNaN(totalBar)) { totalBar = phrases.length; }
+				window.llmUpdateStoryProgressBar(String(storyId), doneBar, totalBar);
+			}
+
+			var savedMsg = i18n.readGoFastSaved || 'Salvato nel database.';
+			showDbStatus(savedMsg, false, 1400).then(function () {
+				setMessagePhase2('', '');
+				if (completionMsgEl) {
+					completionMsgEl.innerHTML = '';
+					completionMsgEl.classList.add('llm-phrase-game__message-phase2--success');
+				}
+
+				var typed = messages.reduce(function (chain, msg, ix) {
+					var isObj = !!msg && 'object' === typeof msg;
+					var text = isObj ? (msg.text || '') : (msg || '');
+					var asHtml = isObj && !!msg.html;
+					return chain.then(function () {
+						return ix > 0 ? sleepMs(300) : null;
+					}).then(function () {
+						return text ? appendMessagePhase2Typewriter(text, asHtml) : null;
+					});
+				}, smoothScrollIntoCenter(scrollTarget));
+
+				typed.then(function () {
+					return sleepMs(holdMs);
+				}).then(function () {
+					var sentence = d.display_sentence || '';
+					function advanceAfterPhrase() {
+						resetAnalysis();
+						if (d.has_more && d.next_index !== null && d.next_index !== undefined) {
+							phraseIx = parseInt(d.next_index, 10);
+							if (isNaN(phraseIx)) { phraseIx = phrases.length; }
+							loadPhrase(false);
+						} else {
+							phraseIx = phrases.length;
+							loadPhrase(false);
+						}
+					}
+					if (!sentence) {
+						advanceAfterPhrase();
+						return;
+					}
+					smoothScrollStoryToCenter().then(function () {
+						var block = document.createElement('div');
+						block.className = 'llm-phrase-game__story-line';
+						if (d.display_interface) {
+							block.dataset.translation = d.display_interface;
+						}
+						storyEl.appendChild(block);
+						hydrateStoryLineTranslations();
+						var sr = ++storyStreamRun;
+						typewriterHtmlInto(block, sentence, function () {
+							return storyStreamRun === sr;
+						}, TYPE_TICK_MS).then(function () {
+							if (storyStreamRun === sr) {
+								advanceAfterPhrase();
+							}
+						});
+					});
+				});
+			});
+		}
+
 		/** Modalità "Read and go fast": AJAX prima, status DB, poi feedback. */
 		function handleReadGoFastSubmit() {
 			syncStrictAccentsFromDom();
@@ -3238,81 +3339,27 @@
 			var p = phrases[phraseIx];
 			var targetRef = p && p.target != null ? String(p.target) : '';
 
-			/* 1. Salva SUBITO nel DB (bypass=true → il server accetta sempre) */
+			var opening = '';
+			if (!txt) {
+				opening = i18n.readGoFastTarget || '';
+			} else if (phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
+				opening = i18n.readGoFastExact || i18n.bravoCorrect || '';
+			} else {
+				opening = i18n.readGoFastAlmost || i18n.readGoFastTarget || '';
+			}
+
 			postCheck(2, txt, false, function (json) {
-				if (!json || !json.success) {
-					/* Errore: mostra messaggio, sblocca UI, non avanzare */
-					var errMsg = (json && json.data && json.data.message)
-						|| i18n.readGoFastSaveError
-						|| i18n.ajaxError
-						|| '';
-					showDbStatus(errMsg, true, 2500).then(function () {
+				runFeedbackAfterSave(json, [
+					opening,
+					{ text: targetRef, html: true },
+					i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
+				], {
+					holdMs: 1200,
+					scrollTarget: completionMsgEl || phase1,
+					onFail: function () {
 						btn1.disabled = false;
 						input1.readOnly = false;
-					});
-					return;
-				}
-
-				/* 2. Successo: breve "Salvato nel database" poi il feedback */
-				var savedMsg = i18n.readGoFastSaved || 'Salvato nel database.';
-				showDbStatus(savedMsg, false, 1400).then(function () {
-					/* 3. Avvia la sequenza feedback (senza AJAX, il check è già fatto) */
-					var opening = '';
-					if (!txt) {
-						opening = i18n.readGoFastTarget || '';
-					} else if (phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
-						opening = i18n.readGoFastExact || i18n.bravoCorrect || '';
-					} else {
-						opening = i18n.readGoFastAlmost || i18n.readGoFastTarget || '';
 					}
-
-					var messages = [
-						opening,
-						{ text: targetRef, html: true },
-						i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
-					];
-
-					/* Aggiorna la progress bar se il server ha restituito dati */
-					var d = json.data || {};
-					if (typeof window.llmUpdateStoryProgressBar === 'function' && d.phrases_total != null) {
-						var doneBar = parseInt(d.phrases_done, 10);
-						if (isNaN(doneBar)) { doneBar = 0; }
-						var totalBar = parseInt(d.phrases_total, 10);
-						if (isNaN(totalBar)) { totalBar = phrases.length; }
-						window.llmUpdateStoryProgressBar(String(storyId), doneBar, totalBar);
-					}
-
-					setMessagePhase2('', '');
-					if (completionMsgEl) {
-						completionMsgEl.innerHTML = '';
-						completionMsgEl.classList.add('llm-phrase-game__message-phase2--success');
-					}
-
-					var scrollTarget = completionMsgEl || phase1;
-					var typed = messages.reduce(function (chain, msg, ix) {
-						var isObj = !!msg && 'object' === typeof msg;
-						var text = isObj ? (msg.text || '') : (msg || '');
-						var asHtml = isObj && !!msg.html;
-						return chain.then(function () {
-							return ix > 0 ? sleepMs(300) : null;
-						}).then(function () {
-							return text ? appendMessagePhase2Typewriter(text, asHtml) : null;
-						});
-					}, smoothScrollIntoCenter(scrollTarget));
-
-					typed.then(function () {
-						return sleepMs(1200);
-					}).then(function () {
-						resetAnalysis();
-						if (d.has_more && d.next_index !== null && d.next_index !== undefined) {
-							phraseIx = parseInt(d.next_index, 10);
-							if (isNaN(phraseIx)) { phraseIx = phrases.length; }
-							loadPhrase(false);
-						} else {
-							phraseIx = phrases.length;
-							loadPhrase(false);
-						}
-					});
 				});
 			}, true /* bypass */);
 		}
