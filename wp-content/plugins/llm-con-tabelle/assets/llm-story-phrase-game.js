@@ -611,6 +611,8 @@
 
 		var randomWordsOn =
 			resolveLearningOptions().indexOf(cfg.optionRandomWords || 'random_words') !== -1;
+		var listenReplayAfterMic =
+			resolveLearningOptions().indexOf(cfg.optionListenReplayLoop || 'listen_replay_loop') !== -1;
 
 		/* Intro storia: typewriter alla prima visita — blocca pulsante ascolto fino al termine */
 		var pendingStoryIntroTypewriter =
@@ -700,11 +702,9 @@
 	var micPendingPhaseDone = false;
 	var micRecognitionStarted = false;
 	var micFeedbackTimer = null;
-	var LISTEN_REPLAY_STORAGE_KEY = 'llm_phrase_game_replay_after_mic';
 	var LISTEN_REPLAY_DELAY_MS = 0;
 	var MIC_FEEDBACK_DISPLAY_MS = 8000;
 	var listenReplayTimer = null;
-	var listenReplayAfterMic = false;
 	var targetPeekTimer = null;
 	var TARGET_PEEK_MS = 10000;
 	var TARGET_PEEK_FADE_MS = 400;
@@ -1608,76 +1608,7 @@
 		wrap.appendChild(countdownWrap);
 		btn._llmListenCountdownWrap = countdownWrap;
 		btn._llmListenCountdownBar = countdownWrap.querySelector('.llm-phrase-game__listen-countdown__bar');
-
-		var replayToggle = document.createElement('div');
-		replayToggle.className = 'llm-phrase-game__listen-replay-toggle';
-		replayToggle.innerHTML =
-			'<span class="llm-phrase-game__listen-replay-toggle__label"></span>' +
-			'<div class="llm-phrase-game__listen-replay-toggle__switch" role="group">' +
-				'<button type="button" class="llm-phrase-game__listen-replay-toggle__opt llm-phrase-game__listen-replay-toggle__opt--yes"></button>' +
-				'<button type="button" class="llm-phrase-game__listen-replay-toggle__opt llm-phrase-game__listen-replay-toggle__opt--no"></button>' +
-			'</div>';
-		var replayLabel = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__label');
-		var replayYes = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__opt--yes');
-		var replayNo = replayToggle.querySelector('.llm-phrase-game__listen-replay-toggle__opt--no');
-		if (replayLabel) {
-			replayLabel.textContent = i18n.listenReplayAfterMic || '';
-		}
-		if (replayYes) {
-			replayYes.textContent = i18n.listenReplayYes || 'Sì';
-			replayYes.setAttribute('aria-pressed', 'false');
-			replayYes.addEventListener('click', function () {
-				saveListenReplayPreference(true);
-			});
-		}
-		if (replayNo) {
-			replayNo.textContent = i18n.listenReplayNo || 'No';
-			replayNo.setAttribute('aria-pressed', 'true');
-			replayNo.addEventListener('click', function () {
-				saveListenReplayPreference(false);
-			});
-		}
-		wrap.appendChild(replayToggle);
-		btn._llmListenReplayToggle = replayToggle;
-		btn._llmListenReplayYes = replayYes;
-		btn._llmListenReplayNo = replayNo;
 		btn._llmListenWrapReady = true;
-	}
-
-	function loadListenReplayPreference() {
-		try {
-			listenReplayAfterMic = localStorage.getItem(LISTEN_REPLAY_STORAGE_KEY) === '1';
-		} catch (e) {
-			listenReplayAfterMic = false;
-		}
-	}
-
-	function saveListenReplayPreference(enabled) {
-		listenReplayAfterMic = !!enabled;
-		try {
-			localStorage.setItem(LISTEN_REPLAY_STORAGE_KEY, listenReplayAfterMic ? '1' : '0');
-		} catch (e) {
-			/* ignore */
-		}
-		syncListenReplayToggleUi();
-	}
-
-	function syncListenReplayToggleUi() {
-		[listenTargetBtn, listenTargetBtnPhase2].forEach(function (btn) {
-			if (!btn || !btn._llmListenReplayYes || !btn._llmListenReplayNo) {
-				return;
-			}
-			btn._llmListenReplayYes.classList.toggle(
-				'llm-phrase-game__listen-replay-toggle__opt--active',
-				listenReplayAfterMic
-			);
-			btn._llmListenReplayNo.classList.toggle(
-				'llm-phrase-game__listen-replay-toggle__opt--active',
-				!listenReplayAfterMic
-			);
-			btn._llmListenReplayYes.setAttribute('aria-pressed', listenReplayAfterMic ? 'true' : 'false');
-			btn._llmListenReplayNo.setAttribute('aria-pressed', !listenReplayAfterMic ? 'true' : 'false');
-		});
 	}
 
 	function getListenBtnForPhase(phaseNum) {
@@ -2375,14 +2306,12 @@
 		bindMic(mic1, input1);
 		bindMic(mic2, input2);
 
-		loadListenReplayPreference();
 		if (listenTargetBtn) {
 			ensureListenTargetWrap(listenTargetBtn);
 		}
 		if (listenTargetBtnPhase2) {
 			ensureListenTargetWrap(listenTargetBtnPhase2);
 		}
-		syncListenReplayToggleUi();
 
 	/* Flag: feedback 0% già mostrato — secondo click bypassa alla fase 2 */
 	var feedbackWarnActive = false;

@@ -25,6 +25,9 @@ class LLM_Learning_Modes {
 	/** Pulsante con le parole della soluzione mescolate a parole-esca. */
 	const OPTION_RANDOM_WORDS = 'random_words';
 
+	/** Dopo ogni sessione microfono, riascolta automaticamente la traduzione. */
+	const OPTION_LISTEN_REPLAY_LOOP = 'listen_replay_loop';
+
 	/** Modalità storica a due fasi. */
 	const MODE_LOVEREWRITE = 'loverewrite';
 
@@ -95,6 +98,11 @@ class LLM_Learning_Modes {
 				'id'          => self::OPTION_RANDOM_WORDS,
 				'label'       => LLM_Phrase_Game_I18n::get( 'option_random_words_label' ),
 				'description' => LLM_Phrase_Game_I18n::get( 'option_random_words_desc' ),
+			),
+			array(
+				'id'          => self::OPTION_LISTEN_REPLAY_LOOP,
+				'label'       => LLM_Phrase_Game_I18n::get( 'option_listen_replay_loop_label' ),
+				'description' => LLM_Phrase_Game_I18n::get( 'option_listen_replay_loop_desc' ),
 			),
 		);
 

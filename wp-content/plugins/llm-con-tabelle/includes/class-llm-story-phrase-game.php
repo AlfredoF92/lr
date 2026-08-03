@@ -523,9 +523,6 @@ class LLM_Story_Phrase_Game {
 			'micUnavailable'   => LLM_Phrase_Game_I18n::get( 'mic_unavailable' ),
 			'micNoAudio'       => LLM_Phrase_Game_I18n::get( 'mic_no_audio' ),
 			'loadingNotes'     => LLM_Phrase_Game_I18n::get( 'loading_notes' ),
-			'listenReplayAfterMic' => LLM_Phrase_Game_I18n::get( 'listen_replay_after_mic' ),
-			'listenReplayYes'  => LLM_Phrase_Game_I18n::get( 'listen_replay_yes' ),
-			'listenReplayNo'   => LLM_Phrase_Game_I18n::get( 'listen_replay_no' ),
 			'altToggleShow'    => LLM_Phrase_Game_I18n::get( 'alt_toggle_show' ),
 			'altToggleHide'    => LLM_Phrase_Game_I18n::get( 'alt_toggle_hide' ),
 			'peekTargetLabel'  => LLM_Phrase_Game_I18n::get( 'peek_target_label' ),
@@ -569,6 +566,7 @@ class LLM_Story_Phrase_Game {
 			'learningOptions'     => LLM_Learning_Modes::current_options(),
 			'learningOptionsStorageKey' => LLM_Learning_Modes::OPTIONS_STORAGE_KEY,
 			'optionRandomWords'   => LLM_Learning_Modes::OPTION_RANDOM_WORDS,
+			'optionListenReplayLoop' => LLM_Learning_Modes::OPTION_LISTEN_REPLAY_LOOP,
 			)
 		);
 	}
