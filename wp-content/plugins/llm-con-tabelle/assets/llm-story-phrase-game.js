@@ -555,6 +555,21 @@
 			return block.wrap && block.toggle && block.list;
 		});
 
+	function extraCharsBlock(suffix, inputEl) {
+		var wrap = qs(root, '.llm-phrase-game__extra-chars--' + suffix);
+		return {
+			wrap: wrap,
+			input: inputEl,
+			toggle: wrap ? qs(wrap, '.llm-phrase-game__extra-chars-toggle') : null,
+			panel: wrap ? qs(wrap, '.llm-phrase-game__extra-chars-panel') : null
+		};
+	}
+
+	var extraCharsBlocks = [extraCharsBlock('1', input1), extraCharsBlock('2', input2)]
+		.filter(function (block) {
+			return block.wrap && block.toggle && block.panel;
+		});
+
 		var MODE_LOVEREWRITE  = 'loverewrite';
 		var MODE_RESOLVE_GO   = 'resolve_go';
 		var MODE_READ_GO_FAST = 'read_go_fast';
@@ -611,6 +626,8 @@
 
 		var randomWordsOn =
 			resolveLearningOptions().indexOf(cfg.optionRandomWords || 'random_words') !== -1;
+		var extraCharsOn =
+			resolveLearningOptions().indexOf(cfg.optionExtraChars || 'extra_chars') !== -1;
 		var listenReplayAfterMic =
 			resolveLearningOptions().indexOf(cfg.optionListenReplayLoop || 'listen_replay_loop') !== -1;
 
@@ -1002,6 +1019,150 @@
 		}
 	}
 
+	function appendCharToInput(inputEl, ch) {
+		if (!inputEl || inputEl.readOnly || inputEl.disabled) {
+			return;
+		}
+		var val = inputEl.value || '';
+		var start = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : val.length;
+		var end = typeof inputEl.selectionEnd === 'number' ? inputEl.selectionEnd : val.length;
+		inputEl.value = val.slice(0, start) + ch + val.slice(end);
+		inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+		inputEl.focus();
+		var pos = start + String(ch).length;
+		try {
+			inputEl.setSelectionRange(pos, pos);
+		} catch (e) {
+			/* ignore */
+		}
+	}
+
+	/* Set caratteri per lingua target (etichette native della lingua studiata). */
+	var EXTRA_CHARS_BY_LANG = {
+		pl: {
+			lower: [
+				{ c: 'ą', n: 'ogonek' }, { c: 'ć', n: 'kreska' }, { c: 'ę', n: 'ogonek' },
+				{ c: 'ł', n: 'kreska ukośna' }, { c: 'ń', n: 'kreska' }, { c: 'ó', n: 'kreska' },
+				{ c: 'ś', n: 'kreska' }, { c: 'ź', n: 'kreska' }, { c: 'ż', n: 'kropka' }
+			],
+			upper: [
+				{ c: 'Ą', n: 'ogonek' }, { c: 'Ć', n: 'kreska' }, { c: 'Ę', n: 'ogonek' },
+				{ c: 'Ł', n: 'kreska ukośna' }, { c: 'Ń', n: 'kreska' }, { c: 'Ó', n: 'kreska' },
+				{ c: 'Ś', n: 'kreska' }, { c: 'Ź', n: 'kreska' }, { c: 'Ż', n: 'kropka' }
+			],
+			symbols: [
+				{ c: '„', n: 'cudzysłów dolny' }, { c: '”', n: 'cudzysłów górny' },
+				{ c: '»', n: 'cudzysłów ostrokątny' }, { c: '«', n: 'cudzysłów ostrokątny' },
+				{ c: '—', n: 'myślnik' }, { c: '…', n: 'wielokropek' }
+			]
+		},
+		it: {
+			lower: [
+				{ c: 'à', n: 'accento grave' }, { c: 'è', n: 'accento grave' }, { c: 'é', n: 'accento acuto' },
+				{ c: 'ì', n: 'accento grave' }, { c: 'ò', n: 'accento grave' }, { c: 'ù', n: 'accento grave' }
+			],
+			upper: [
+				{ c: 'À', n: 'accento grave' }, { c: 'È', n: 'accento grave' }, { c: 'É', n: 'accento acuto' },
+				{ c: 'Ì', n: 'accento grave' }, { c: 'Ò', n: 'accento grave' }, { c: 'Ù', n: 'accento grave' }
+			],
+			symbols: [
+				{ c: '«', n: 'virgolette basse apertura' }, { c: '»', n: 'virgolette basse chiusura' },
+				{ c: '\u201C', n: 'virgolette alte apertura' }, { c: '\u201D', n: 'virgolette alte chiusura' },
+				{ c: '\u2019', n: 'apostrofo tipografico' },
+				{ c: '—', n: 'lineetta' }, { c: '…', n: 'puntini di sospensione' }
+			]
+		},
+		es: {
+			lower: [
+				{ c: 'á', n: 'acento' }, { c: 'é', n: 'acento' }, { c: 'í', n: 'acento' },
+				{ c: 'ó', n: 'acento' }, { c: 'ú', n: 'acento' }, { c: 'ü', n: 'diéresis' }, { c: 'ñ', n: 'eñe' }
+			],
+			upper: [
+				{ c: 'Á', n: 'acento' }, { c: 'É', n: 'acento' }, { c: 'Í', n: 'acento' },
+				{ c: 'Ó', n: 'acento' }, { c: 'Ú', n: 'acento' }, { c: 'Ü', n: 'diéresis' }, { c: 'Ñ', n: 'eñe' }
+			],
+			symbols: [
+				{ c: '¿', n: 'apertura interrogación' }, { c: '¡', n: 'apertura exclamación' },
+				{ c: '«', n: 'comillas angulares' }, { c: '»', n: 'comillas angulares' },
+				{ c: '—', n: 'raya' }, { c: '…', n: 'puntos suspensivos' }
+			]
+		}
+	};
+
+	function getExtraCharsSet() {
+		var code = String(cfg.targetLangCode || '').toLowerCase();
+		return EXTRA_CHARS_BY_LANG[code] || null;
+	}
+
+	function renderExtraCharsPanel(block) {
+		if (!block.panel) {
+			return;
+		}
+		var set = getExtraCharsSet();
+		block.panel.innerHTML = '';
+		if (!set) {
+			return;
+		}
+		var sections = [
+			{ key: 'lower', label: i18n.extraCharsLower || 'Minuscole', items: set.lower },
+			{ key: 'upper', label: i18n.extraCharsUpper || 'Maiuscole', items: set.upper },
+			{ key: 'symbols', label: i18n.extraCharsSymbols || 'Simboli', items: set.symbols }
+		];
+		sections.forEach(function (sec) {
+			if (!sec.items || !sec.items.length) {
+				return;
+			}
+			var row = document.createElement('div');
+			row.className = 'llm-phrase-game__extra-chars-row';
+			var lab = document.createElement('p');
+			lab.className = 'llm-phrase-game__extra-chars-row-label';
+			lab.textContent = sec.label;
+			var btns = document.createElement('div');
+			btns.className = 'llm-phrase-game__extra-chars-btns';
+			sec.items.forEach(function (item) {
+				var btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'llm-phrase-game__extra-char';
+				btn.setAttribute('aria-label', item.c + ' ' + (item.n || ''));
+				var glyph = document.createElement('span');
+				glyph.className = 'llm-phrase-game__extra-char-glyph';
+				glyph.textContent = item.c;
+				var name = document.createElement('span');
+				name.className = 'llm-phrase-game__extra-char-name';
+				name.textContent = item.n || '';
+				btn.appendChild(glyph);
+				btn.appendChild(name);
+				btn.addEventListener('click', function () {
+					appendCharToInput(block.input, item.c);
+				});
+				btns.appendChild(btn);
+			});
+			row.appendChild(lab);
+			row.appendChild(btns);
+			block.panel.appendChild(row);
+		});
+	}
+
+	function setExtraCharsOpen(block, open) {
+		if (!block.toggle || !block.panel) {
+			return;
+		}
+		block.toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+		block.panel.hidden = !open;
+		if (open && !block.panel.childNodes.length) {
+			renderExtraCharsPanel(block);
+		}
+	}
+
+	function resetExtraChars() {
+		extraCharsBlocks.forEach(function (block) {
+			setExtraCharsOpen(block, false);
+			if (block.panel) {
+				block.panel.innerHTML = '';
+			}
+		});
+	}
+
 	function renderRandomWords(block) {
 		if (!block.list) {
 			return;
@@ -1020,12 +1181,19 @@
 		});
 	}
 
-	/* Le parole restano visibili fino alla frase successiva. */
-	function revealRandomWords(block) {
-		renderRandomWords(block);
-		block.list.hidden = false;
-		if (block.toggle) {
-			block.toggle.hidden = true;
+	/* Accordion: apre/chiude il pannello parole. */
+	function setRandomWordsOpen(block, open) {
+		if (!block.toggle || !block.list) {
+			return;
+		}
+		block.toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+		if (open) {
+			if (!block.list.childNodes.length) {
+				renderRandomWords(block);
+			}
+			block.list.hidden = false;
+		} else {
+			block.list.hidden = true;
 		}
 	}
 
@@ -1036,6 +1204,7 @@
 				block.list.hidden = true;
 			}
 			if (block.toggle) {
+				block.toggle.setAttribute('aria-expanded', 'false');
 				block.toggle.hidden = false;
 			}
 		});
@@ -2683,6 +2852,7 @@
 		hideLoadingNotes();
 		resetNotesPanel();
 		resetRandomWords();
+		resetExtraChars();
 		cancelTts();
 		cancelAnalysisStream();
 			cancelStoryStream();
@@ -3340,7 +3510,21 @@
 		randomWordsBlocks.forEach(function (block) {
 			block.wrap.hidden = false;
 			block.toggle.addEventListener('click', function () {
-				revealRandomWords(block);
+				var open = block.toggle.getAttribute('aria-expanded') === 'true';
+				setRandomWordsOpen(block, !open);
+			});
+		});
+	}
+
+	if (extraCharsOn && getExtraCharsSet()) {
+		extraCharsBlocks.forEach(function (block) {
+			block.wrap.hidden = false;
+			if (randomWordsOn) {
+				block.wrap.classList.add('llm-phrase-game__extra-chars--after-random');
+			}
+			block.toggle.addEventListener('click', function () {
+				var open = block.toggle.getAttribute('aria-expanded') === 'true';
+				setExtraCharsOpen(block, !open);
 			});
 		});
 	}

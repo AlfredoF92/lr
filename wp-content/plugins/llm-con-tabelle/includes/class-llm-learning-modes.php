@@ -28,6 +28,9 @@ class LLM_Learning_Modes {
 	/** Dopo ogni sessione microfono, riascolta automaticamente la traduzione. */
 	const OPTION_LISTEN_REPLAY_LOOP = 'listen_replay_loop';
 
+	/** Pulsanti per inserire caratteri speciali della lingua target. */
+	const OPTION_EXTRA_CHARS = 'extra_chars';
+
 	/** Modalità storica a due fasi. */
 	const MODE_LOVEREWRITE = 'loverewrite';
 
@@ -103,6 +106,11 @@ class LLM_Learning_Modes {
 				'id'          => self::OPTION_LISTEN_REPLAY_LOOP,
 				'label'       => LLM_Phrase_Game_I18n::get( 'option_listen_replay_loop_label' ),
 				'description' => LLM_Phrase_Game_I18n::get( 'option_listen_replay_loop_desc' ),
+			),
+			array(
+				'id'          => self::OPTION_EXTRA_CHARS,
+				'label'       => LLM_Phrase_Game_I18n::get( 'option_extra_chars_label' ),
+				'description' => LLM_Phrase_Game_I18n::get( 'option_extra_chars_desc' ),
 			),
 		);
 
