@@ -1276,3 +1276,269 @@
 		font-size: 1.55rem;
 	}
 }
+
+/* ─── Fase unica: messaggi di esito e appunti a richiesta ────────────── */
+
+.llm-phrase-game:not(.llm-phrase-game--mode-resolve-go) .llm-phrase-game__message-solo {
+	display: none;
+}
+
+.llm-phrase-game__notes[hidden] {
+	display: none;
+}
+
+.llm-phrase-game__notes {
+	margin-top: 1.25rem;
+}
+
+.llm-phrase-game__notes-panel[hidden] {
+	display: none;
+}
+
+.llm-phrase-game__notes-panel {
+	margin-top: 0.85rem;
+}
+
+.llm-phrase-game__notes-panel .llm-phrase-game__analysis {
+	margin-top: 0;
+}
+
+/* ─── Modalità di apprendimento ──────────────────────────────────────── */
+
+.llm-learning-mode {
+	margin-top: 2rem;
+	font-family: inherit;
+}
+
+.llm-learning-mode__bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 0;
+	padding-top: 1rem;
+	border-top: 1px solid #e2e2e6;
+	font-size: 0.72rem;
+	line-height: 1.4;
+	color: #5a5a5e;
+}
+
+.llm-learning-mode__label {
+	letter-spacing: 0.01em;
+}
+
+.llm-learning-mode__value {
+	font-weight: 700;
+	color: #1a1a1a;
+}
+
+.llm-phrase-game .llm-learning-mode__change,
+.llm-learning-mode__change {
+	-webkit-appearance: none;
+	appearance: none;
+	margin-left: 0.25rem;
+	padding: 0.25rem 0.7rem;
+	border: 1px solid #c0c0c4 !important;
+	border-radius: 20px;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: #5a5a5e !important;
+	font-family: inherit;
+	font-size: 0.62rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	line-height: 1.15;
+	cursor: pointer;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.llm-phrase-game .llm-learning-mode__change:hover,
+.llm-phrase-game .llm-learning-mode__change:focus-visible,
+.llm-learning-mode__change:hover,
+.llm-learning-mode__change:focus-visible {
+	color: #1a1a1a !important;
+	border-color: #6a6a6e !important;
+	outline: none;
+}
+
+.llm-learning-mode__overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: rgba(20, 20, 24, 0.55);
+}
+
+.llm-learning-mode__overlay[hidden] {
+	display: none;
+}
+
+.llm-learning-mode__dialog {
+	position: relative;
+	width: 100%;
+	max-width: 30rem;
+	max-height: 85vh;
+	overflow-y: auto;
+	padding: 1.6rem 1.5rem 1.35rem;
+	background: #fff;
+	border-radius: 14px;
+	box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+	font-size: 0.9rem;
+	color: #1a1a1a;
+}
+
+.llm-phrase-game .llm-learning-mode__close,
+.llm-learning-mode__close {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.65rem;
+	padding: 0 !important;
+	border: none !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: #8a8a8e !important;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.llm-learning-mode__close:hover {
+	color: #1a1a1a !important;
+}
+
+.llm-learning-mode__title {
+	margin: 0 0 0.4rem;
+	font-size: 1.05rem;
+	font-weight: 800;
+	line-height: 1.3;
+}
+
+.llm-learning-mode__intro {
+	margin: 0 0 1rem;
+	font-size: 0.8rem;
+	line-height: 1.5;
+	color: #5a5a5e;
+}
+
+.llm-learning-mode__list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+}
+
+.llm-learning-mode__option {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.7rem;
+	padding: 0.85rem 0.95rem;
+	border: 1px solid #d8d8dc;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.llm-learning-mode__option:hover {
+	border-color: #9a9aa0;
+}
+
+.llm-learning-mode__option--active {
+	border-color: #1a1a1a;
+	background: #f7f7f8;
+}
+
+.llm-learning-mode__radio {
+	margin: 0.2rem 0 0;
+	flex-shrink: 0;
+	accent-color: #1a1a1a;
+}
+
+.llm-learning-mode__option-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.llm-learning-mode__option-name {
+	font-size: 0.9rem;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.llm-learning-mode__option-desc {
+	font-size: 0.78rem;
+	line-height: 1.5;
+	color: #5a5a5e;
+}
+
+.llm-learning-mode__msg {
+	margin: 0.85rem 0 0;
+	min-height: 1.2em;
+	font-size: 0.78rem;
+	line-height: 1.4;
+	color: #5a5a5e;
+}
+
+.llm-learning-mode__msg--error {
+	color: #b3261e;
+}
+
+.llm-learning-mode__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.6rem;
+	margin-top: 0.9rem;
+}
+
+.llm-phrase-game .llm-learning-mode__cancel,
+.llm-phrase-game .llm-learning-mode__save,
+.llm-learning-mode__cancel,
+.llm-learning-mode__save {
+	-webkit-appearance: none;
+	appearance: none;
+	padding: 0.5rem 1.1rem;
+	border-radius: 20px;
+	box-shadow: none !important;
+	font-family: inherit;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	line-height: 1.15;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.llm-phrase-game .llm-learning-mode__cancel,
+.llm-learning-mode__cancel {
+	border: 1px solid #c0c0c4 !important;
+	background: transparent !important;
+	color: #5a5a5e !important;
+}
+
+.llm-phrase-game .llm-learning-mode__cancel:hover,
+.llm-learning-mode__cancel:hover {
+	border-color: #6a6a6e !important;
+	color: #1a1a1a !important;
+}
+
+.llm-phrase-game .llm-learning-mode__save,
+.llm-learning-mode__save {
+	border: 1px solid #1a1a1a !important;
+	background: #1a1a1a !important;
+	color: #fff !important;
+}
+
+.llm-phrase-game .llm-learning-mode__save:hover,
+.llm-learning-mode__save:hover {
+	background: #333 !important;
+	border-color: #333 !important;
+}
+
+.llm-learning-mode__save:disabled,
+.llm-learning-mode__cancel:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	pointer-events: none;
+}

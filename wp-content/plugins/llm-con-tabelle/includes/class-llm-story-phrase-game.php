@@ -168,6 +168,16 @@ class LLM_Story_Phrase_Game {
 					</div>
 				</div>
 			<div class="llm-phrase-game__message" role="alert"></div>
+			<div class="llm-phrase-game__message-phase2 llm-phrase-game__message-solo" role="status" aria-live="polite"></div>
+			<div class="llm-phrase-game__notes" hidden>
+				<button type="button" class="llm-phrase-game__listen-target llm-phrase-game__notes-toggle" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-notes-panel">
+					<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">
+						<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM8 6h8v2H8V6zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
+					</span>
+					<span class="llm-phrase-game__listen-target-text llm-phrase-game__notes-toggle-text"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'notes_toggle_show' ) ); ?></span>
+				</button>
+				<div class="llm-phrase-game__notes-panel" id="<?php echo esc_attr( $uid ); ?>-notes-panel" hidden></div>
+			</div>
 			<div class="llm-phrase-game__phase1-feedback" hidden aria-live="polite"></div>
 			<div class="llm-phrase-game__loading-notes" hidden aria-live="polite"></div>
 			<div class="llm-phrase-game__analysis" hidden>
@@ -239,6 +249,56 @@ class LLM_Story_Phrase_Game {
 			<button type="button" class="llm-phrase-game__restart-btn button"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'story_progress_restart' ) ); ?></button>
 			<?php endif; ?>
 		</div>
+		<?php echo self::render_learning_mode_ui( $uid ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Barra "Modalità apprendimento" + popup di scelta.
+	 *
+	 * @param string $uid Prefisso ID univoco dell'istanza.
+	 * @return string HTML già escapato.
+	 */
+	private static function render_learning_mode_ui( $uid ) {
+		$modes        = LLM_Learning_Modes::all();
+		$current      = LLM_Learning_Modes::current();
+		$radio_name   = $uid . '-learning-mode';
+		$dialog_id    = $uid . '-learning-mode-dialog';
+		$title_id     = $uid . '-learning-mode-title';
+
+		ob_start();
+		?>
+		<div class="llm-learning-mode" data-current-mode="<?php echo esc_attr( $current ); ?>">
+			<p class="llm-learning-mode__bar">
+				<span class="llm-learning-mode__label"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_label' ) ); ?></span>
+				<span class="llm-learning-mode__value"><?php echo esc_html( LLM_Learning_Modes::label( $current ) ); ?></span>
+				<button type="button" class="llm-learning-mode__change" aria-haspopup="dialog" aria-controls="<?php echo esc_attr( $dialog_id ); ?>"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_change' ) ); ?></button>
+			</p>
+			<div class="llm-learning-mode__overlay" id="<?php echo esc_attr( $dialog_id ); ?>" hidden>
+				<div class="llm-learning-mode__dialog" role="dialog" aria-modal="true" aria-labelledby="<?php echo esc_attr( $title_id ); ?>">
+					<button type="button" class="llm-learning-mode__close" aria-label="<?php echo esc_attr( LLM_Phrase_Game_I18n::get( 'learning_mode_close' ) ); ?>">&times;</button>
+					<h3 class="llm-learning-mode__title" id="<?php echo esc_attr( $title_id ); ?>"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_title' ) ); ?></h3>
+					<p class="llm-learning-mode__intro"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_intro' ) ); ?></p>
+					<div class="llm-learning-mode__list">
+						<?php foreach ( $modes as $mode ) : ?>
+						<label class="llm-learning-mode__option<?php echo $mode['id'] === $current ? ' llm-learning-mode__option--active' : ''; ?>">
+							<input type="radio" class="llm-learning-mode__radio" name="<?php echo esc_attr( $radio_name ); ?>" value="<?php echo esc_attr( $mode['id'] ); ?>" <?php checked( $mode['id'], $current ); ?> />
+							<span class="llm-learning-mode__option-body">
+								<span class="llm-learning-mode__option-name"><?php echo esc_html( $mode['label'] ); ?></span>
+								<span class="llm-learning-mode__option-desc"><?php echo esc_html( $mode['description'] ); ?></span>
+							</span>
+						</label>
+						<?php endforeach; ?>
+					</div>
+					<p class="llm-learning-mode__msg" role="status" aria-live="polite"></p>
+					<div class="llm-learning-mode__actions">
+						<button type="button" class="llm-learning-mode__cancel"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_cancel' ) ); ?></button>
+						<button type="button" class="llm-learning-mode__save"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_save' ) ); ?></button>
+					</div>
+				</div>
+			</div>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -339,8 +399,18 @@ class LLM_Story_Phrase_Game {
 			true
 		);
 
+		wp_register_script(
+			'llm-learning-modes',
+			LLM_TABELLE_URL . 'assets/llm-learning-modes.js',
+			array(),
+			LLM_TABELLE_VERSION,
+			true
+		);
+
 		wp_enqueue_style( 'llm-phrase-game' );
 		wp_enqueue_script( 'llm-phrase-game' );
+		wp_enqueue_script( 'llm-learning-modes' );
+		wp_localize_script( 'llm-learning-modes', 'llmLearningModes', LLM_Learning_Modes::script_data() );
 
 		wp_localize_script(
 			'llm-phrase-game',
@@ -388,6 +458,10 @@ class LLM_Story_Phrase_Game {
 			'altToggleHide'    => LLM_Phrase_Game_I18n::get( 'alt_toggle_hide' ),
 			'peekTargetLabel'  => LLM_Phrase_Game_I18n::get( 'peek_target_label' ),
 			'peekTargetAria'   => LLM_Phrase_Game_I18n::get( 'peek_target_aria' ),
+			'resolveGoPrompt'  => LLM_Phrase_Game_I18n::get( 'resolve_go_prompt' ),
+			'notesToggleShow'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_show' ),
+			'notesToggleHide'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_hide' ),
+			'resolveGoFail'    => LLM_Phrase_Game_I18n::get( 'resolve_go_fail' ),
 			),
 			'gameFinished'        => $game_finished,
 			'savedPhraseIndex'    => $saved_phrase_ix,
@@ -408,6 +482,10 @@ class LLM_Story_Phrase_Game {
 				? LLM_Admin_Phrase_Feedback::get_for_lang( LLM_Phrase_Game_I18n::lang() )
 				: array(),
 			'micFeedback'         => LLM_Phrase_Game_I18n::get_mic_feedback(),
+			'learningMode'        => LLM_Learning_Modes::current(),
+			'learningModeDefault' => LLM_Learning_Modes::default_mode(),
+			'learningModeStorageKey' => LLM_Learning_Modes::STORAGE_KEY,
+			'learningModeIsSaved' => is_user_logged_in(),
 			)
 		);
 	}

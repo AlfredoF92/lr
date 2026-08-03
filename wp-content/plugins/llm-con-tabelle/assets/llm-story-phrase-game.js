@@ -381,12 +381,47 @@
 		var phase2RecapCounter   = qs(root, '.llm-phrase-game__phase2-recap__counter');
 	var phase2RecapIface     = qs(root, '.llm-phrase-game__phase2-recap__interface');
 	var phase2RecapPrompt    = qs(root, '.llm-phrase-game__phase2-recap__prompt');
-	var listenTargetBtn      = qs(root, '.llm-phrase-game__listen-target:not(.llm-phrase-game__listen-target--phase2)');
+	var listenTargetBtn      = qs(root, '.llm-phrase-game__listen-target:not(.llm-phrase-game__listen-target--phase2):not(.llm-phrase-game__peek-target):not(.llm-phrase-game__notes-toggle)');
 		var listenTargetBtnPhase2 = qs(root, '.llm-phrase-game__listen-target--phase2');
 		var composePhase1 = qs(root, '.llm-phrase-game__compose--phase1');
 		var composePhase2 = qs(root, '.llm-phrase-game__compose--phase2');
 	var feedbackEl      = qs(root, '.llm-phrase-game__phase1-feedback');
 	var loadingNotesEl  = qs(root, '.llm-phrase-game__loading-notes');
+	var messageSoloEl   = qs(root, '.llm-phrase-game__message-solo');
+	var notesWrap       = qs(root, '.llm-phrase-game__notes');
+	var notesToggleBtn  = qs(root, '.llm-phrase-game__notes-toggle');
+	var notesToggleText = qs(root, '.llm-phrase-game__notes-toggle-text');
+	var notesPanel      = qs(root, '.llm-phrase-game__notes-panel');
+
+		var MODE_LOVEREWRITE = 'loverewrite';
+		var MODE_RESOLVE_GO  = 'resolve_go';
+
+		/* Utente loggato: vince il profilo. Ospite: localStorage, poi default. */
+		function resolveLearningMode() {
+			var fallback = cfg.learningMode || MODE_LOVEREWRITE;
+			if (cfg.learningModeIsSaved) {
+				return fallback;
+			}
+			try {
+				var stored = window.localStorage.getItem(cfg.learningModeStorageKey || 'llm_learning_mode');
+				if (stored) {
+					return stored;
+				}
+			} catch (e) {
+				/* Storage non disponibile: resta il default. */
+			}
+			return fallback;
+		}
+
+		var learningMode = String(resolveLearningMode() || '').replace(/[^a-z0-9_-]/gi, '');
+		if (!learningMode) {
+			learningMode = MODE_LOVEREWRITE;
+		}
+		var isResolveGo = learningMode === MODE_RESOLVE_GO;
+		root.classList.add('llm-phrase-game--mode-' + learningMode.replace(/_/g, '-'));
+
+		/* Dove finiscono i messaggi di completamento frase. */
+		var completionMsgEl = (isResolveGo && messageSoloEl) ? messageSoloEl : messagePhase2El;
 
 		/* Intro storia: typewriter alla prima visita — blocca pulsante ascolto fino al termine */
 		var pendingStoryIntroTypewriter =
@@ -719,6 +754,55 @@
 		});
 	}
 
+	/** Il pannello impostazioni può cambiare gli accenti dopo il boot: rileggiamo dal DOM. */
+	function syncStrictAccentsFromDom() {
+		var accentsToggleEl = document.querySelector('.llm-story-settings__accents-input');
+		if (accentsToggleEl && window.llmPhraseGame) {
+			window.llmPhraseGame.strictAccents = accentsToggleEl.checked;
+		}
+	}
+
+	/**
+	 * Appunti a richiesta ("Risolvi e vai"): riusa il blocco analisi esistente
+	 * spostandolo sotto il pulsante, così non si duplica il markup.
+	 */
+	var notesLoaded = false;
+
+	function setNotesOpen(open) {
+		if (!notesToggleBtn || !notesPanel) {
+			return;
+		}
+		var isOpen = !!open;
+		notesPanel.hidden = !isOpen;
+		notesToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+		if (notesToggleText) {
+			notesToggleText.textContent = isOpen
+				? (i18n.notesToggleHide || 'Nascondi gli appunti')
+				: (i18n.notesToggleShow || 'Carica gli appunti per questa frase');
+		}
+		if (!isOpen || notesLoaded) {
+			return;
+		}
+		notesLoaded = true;
+		var p = phrases[phraseIx];
+		analysisEl.hidden = false;
+		runAnalysisTypestream({
+			notesOnly: true,
+			skipYourPhrase: true,
+			skipBravo: true,
+			grammar: (p && p.grammar) || '',
+			target: (p && p.target) || '',
+			alt: (p && p.alt) || ''
+		});
+	}
+
+	function resetNotesPanel() {
+		notesLoaded = false;
+		if (notesToggleBtn && notesPanel) {
+			setNotesOpen(false);
+		}
+	}
+
 	function resetTargetPeek() {
 		clearTargetPeekTimer();
 		if (targetShow) {
@@ -969,6 +1053,8 @@
 
 	return chain.then(function () {
 		if (!alive()) { return; }
+		/* Appunti a richiesta: nessun passaggio alla fase 2. */
+		if (opts.notesOnly) { return; }
 		/* Popola il recap fase-1 visibile dentro il blocco fase-2 */
 		var p = phrases[phraseIx];
 		if (phase2RecapCounter) {
@@ -2292,41 +2378,41 @@
 			messageEl.classList.toggle('llm-phrase-game__message--error', !!isError);
 		}
 
-		/** Messaggi solo per la fase 2 (secondo Continua): variant 'error' | 'success' | 'pending' | ''. */
+		/** Messaggi di esito frase (fase 2 o fase unica): variant 'error' | 'success' | 'pending' | ''. */
 		function setMessagePhase2(text, variant) {
-			if (!messagePhase2El) {
+			if (!completionMsgEl) {
 				return;
 			}
 			cancelPhase2MessageStream();
-			messagePhase2El.textContent = text || '';
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--error', variant === 'error');
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--success', variant === 'success');
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--pending', variant === 'pending');
+			completionMsgEl.textContent = text || '';
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--error', variant === 'error');
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--success', variant === 'success');
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--pending', variant === 'pending');
 		}
 
 		function setMessagePhase2Typewriter(text, variant) {
-			if (!messagePhase2El) {
+			if (!completionMsgEl) {
 				return Promise.resolve();
 			}
 			cancelPhase2MessageStream();
 			var run = phase2MessageRun;
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--error', variant === 'error');
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--success', variant === 'success');
-			messagePhase2El.classList.toggle('llm-phrase-game__message-phase2--pending', false);
-			return typewriterInto(messagePhase2El, text || '', function () {
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--error', variant === 'error');
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--success', variant === 'success');
+			completionMsgEl.classList.toggle('llm-phrase-game__message-phase2--pending', false);
+			return typewriterInto(completionMsgEl, text || '', function () {
 				return phase2MessageRun === run;
 			});
 		}
 
 		function appendMessagePhase2Typewriter(text) {
-			if (!messagePhase2El) {
+			if (!completionMsgEl) {
 				return Promise.resolve();
 			}
 			phase2MessageRun++;
 			var run = phase2MessageRun;
 			var line = document.createElement('p');
 			line.className = 'llm-phrase-game__message-phase2-line';
-			messagePhase2El.appendChild(line);
+			completionMsgEl.appendChild(line);
 			return typewriterInto(line, text || '', function () {
 				return phase2MessageRun === run;
 			});
@@ -2418,6 +2504,7 @@
 		micWordsThisPhrase = 0;
 		hidePhase1Feedback();
 		hideLoadingNotes();
+		resetNotesPanel();
 		cancelTts();
 		cancelAnalysisStream();
 			cancelStoryStream();
@@ -2511,7 +2598,7 @@
 			renderProgress();
 			runPhraseIntroTypewriter(
 				p.interface || '',
-				t('translatePrompt', targetLang),
+				t(isResolveGo ? 'resolveGoPrompt' : 'translatePrompt', targetLang),
 				introId
 			).then(function () {
 				if (phraseIntroRun !== introId) {
@@ -2585,9 +2672,21 @@
 		targetShow.addEventListener('click', onTargetPeekAreaClick);
 	}
 
+	if (notesToggleBtn) {
+		notesToggleBtn.addEventListener('click', function () {
+			setNotesOpen(notesToggleBtn.getAttribute('aria-expanded') !== 'true');
+		});
+	}
+
 	btn1.addEventListener('click', function () {
 		stopSpeech();
 		cancelTts();
+
+		if (isResolveGo) {
+			handleResolveGoSubmit();
+			return;
+		}
+
 		var txt = (input1.value || '').trim();
 
 		/* ── Caso 1: campo vuoto ─────────────────────────────────────── */
@@ -2698,75 +2797,63 @@
 		});
 	});
 
-		btn2.addEventListener('click', function () {
-			stopSpeech();
-			cancelTts();
-			/* Sincronizza strictAccents direttamente dal DOM per evitare disallineamenti */
-			var accentsToggleEl = document.querySelector('.llm-story-settings__accents-input');
-			if (accentsToggleEl && window.llmPhraseGame) {
-				window.llmPhraseGame.strictAccents = accentsToggleEl.checked;
-			}
-			var txt = (input2.value || '').trim();
-			if (!txt) {
-				setMessagePhase2Typewriter(i18n.empty || '', 'error');
-				return;
-			}
-			var p2 = phrases[phraseIx];
-			var targetRef2 = p2 && p2.target != null ? String(p2.target) : '';
-		if (!phase2PassesLocal(txt, targetRef2, PHASE2_SIM, PHASE2_WR)) {
-				setMessagePhase2Typewriter(i18n.phase2Fail || '', 'error');
-				return;
-			}
-		setMessagePhase2('', '');
-		btn2.disabled = true;
-		if (input2) {
-			input2.readOnly = true;
-		}
-		var phase2ScrollTarget = messagePhase2El || phase2;
-		var totalWords = tokenizeWords(txt).length;
-		var micUsed = totalWords > 0 && micWordsThisPhrase >= Math.max(1, Math.ceil(totalWords * 0.2));
+		/**
+		 * Sequenza di completamento frase condivisa da tutte le modalità:
+		 * messaggi di esito → riga di storia → frase successiva.
+		 *
+		 * @param {string}   txt      Testo validato dell'utente.
+		 * @param {boolean}  micUsed  Se assegnare il punto microfono.
+		 * @param {{scrollTarget?: Element, showMicMessage?: boolean, onFail?: function(string):void}} opts
+		 */
+		function runPhraseCompletionFlow(txt, micUsed, opts) {
+			opts = opts || {};
+			var showMicMessage = opts.showMicMessage !== false;
+			var onFail = typeof opts.onFail === 'function' ? opts.onFail : function () {};
+			var scrollTarget = opts.scrollTarget || completionMsgEl || phase2;
 
-		/* Avvia AJAX subito in parallelo con i messaggi. */
-		var ajaxPromise = new Promise(function (resolve) {
-			postCheck(2, txt, micUsed, function (json) {
-				resolve(json);
+			/* Avvia AJAX subito in parallelo con i messaggi. */
+			var ajaxPromise = new Promise(function (resolve) {
+				postCheck(2, txt, micUsed, function (json) {
+					resolve(json);
+				});
 			});
-		});
 
-		setMessagePhase2('', '');
-		messagePhase2El && (messagePhase2El.innerHTML = '');
-		messagePhase2El && messagePhase2El.classList.add('llm-phrase-game__message-phase2--success');
+			setMessagePhase2('', '');
+			if (completionMsgEl) {
+				completionMsgEl.innerHTML = '';
+				completionMsgEl.classList.add('llm-phrase-game__message-phase2--success');
+			}
 
-		smoothScrollIntoCenter(phase2ScrollTarget).then(function () {
-			return appendMessagePhase2Typewriter(i18n.bravoCorrect || '');
-		}).then(function () {
-			return sleepMs(300);
-		}).then(function () {
-			return appendMessagePhase2Typewriter(i18n.phraseCompletePoints || '');
-		}).then(function () {
-			return sleepMs(300);
-		}).then(function () {
-			var micMsg = micUsed ? (i18n.micUsedPoint || '') : (i18n.micUsedNoPoint || '');
-			return appendMessagePhase2Typewriter(micMsg);
-		}).then(function () {
-			return sleepMs(300);
-		}).then(function () {
-			return appendMessagePhase2Typewriter(i18n.storyContinue || '');
-		}).then(function () {
-			return Promise.all([ajaxPromise, sleepMs(3000)]);
-		})
-				.then(function (pair) {
-			var json = pair && pair[0];
-				if (!json || !json.success) {
-					btn2.disabled = false;
-				if (input2) {
-					input2.readOnly = false;
-				}
-				var msg =
-						(json && json.data && json.data.message) || i18n.phase2Fail || '';
-					setMessagePhase2Typewriter(msg, 'error');
+			return smoothScrollIntoCenter(scrollTarget).then(function () {
+				return appendMessagePhase2Typewriter(i18n.bravoCorrect || '');
+			}).then(function () {
+				return sleepMs(300);
+			}).then(function () {
+				return appendMessagePhase2Typewriter(i18n.phraseCompletePoints || '');
+			}).then(function () {
+				return sleepMs(300);
+			}).then(function () {
+				if (!showMicMessage) {
 					return;
 				}
+				var micMsg = micUsed ? (i18n.micUsedPoint || '') : (i18n.micUsedNoPoint || '');
+				return appendMessagePhase2Typewriter(micMsg);
+			}).then(function () {
+				return sleepMs(300);
+			}).then(function () {
+				return appendMessagePhase2Typewriter(i18n.storyContinue || '');
+			}).then(function () {
+				return Promise.all([ajaxPromise, sleepMs(3000)]);
+			})
+				.then(function (pair) {
+					var json = pair && pair[0];
+					if (!json || !json.success) {
+						var msg =
+							(json && json.data && json.data.message) || i18n.phase2Fail || '';
+						onFail(msg);
+						setMessagePhase2Typewriter(msg, 'error');
+						return;
+					}
 					var d = json.data || {};
 					if (typeof window.llmUpdateStoryProgressBar === 'function' && d.phrases_total != null) {
 						var doneBar = parseInt(d.phrases_done, 10);
@@ -2780,7 +2867,7 @@
 						window.llmUpdateStoryProgressBar(String(storyId), doneBar, totalBar);
 					}
 					var sentence = d.display_sentence || '';
-					function advanceAfterPhrase2() {
+					function advanceAfterPhrase() {
 						resetAnalysis();
 						if (d.has_more && d.next_index !== null && d.next_index !== undefined) {
 							phraseIx = parseInt(d.next_index, 10);
@@ -2794,30 +2881,101 @@
 						}
 					}
 					if (!sentence) {
-						advanceAfterPhrase2();
+						advanceAfterPhrase();
 						return;
 					}
-				smoothScrollStoryToCenter().then(function () {
-					var block = document.createElement('div');
-					block.className = 'llm-phrase-game__story-line';
-					if (d.display_interface) {
-						block.dataset.translation = d.display_interface;
-					}
-					storyEl.appendChild(block);
-					hydrateStoryLineTranslations();
+					smoothScrollStoryToCenter().then(function () {
+						var block = document.createElement('div');
+						block.className = 'llm-phrase-game__story-line';
+						if (d.display_interface) {
+							block.dataset.translation = d.display_interface;
+						}
+						storyEl.appendChild(block);
+						hydrateStoryLineTranslations();
 						var sr = ++storyStreamRun;
 						typewriterHtmlInto(block, sentence, function () {
 							return storyStreamRun === sr;
 						}, TYPE_TICK_MS).then(function () {
 							if (storyStreamRun === sr) {
-								advanceAfterPhrase2();
+								advanceAfterPhrase();
 							}
 						});
 					});
 				});
+		}
+
+		/** Modalità "Risolvi e vai": fase unica, validazione sulla traduzione corretta. */
+		function handleResolveGoSubmit() {
+			syncStrictAccentsFromDom();
+
+			var txt = (input1.value || '').trim();
+			if (!txt) {
+				setMessagePhase2Typewriter(i18n.empty || '', 'error');
+				return;
+			}
+			var p = phrases[phraseIx];
+			var targetRef = p && p.target != null ? String(p.target) : '';
+			if (!phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
+				setMessagePhase2Typewriter(i18n.resolveGoFail || i18n.phase2Fail || '', 'error');
+				return;
+			}
+
+			setMessagePhase2('', '');
+			btn1.disabled = true;
+			input1.readOnly = true;
+			setNotesOpen(false);
+
+			runPhraseCompletionFlow(txt, false, {
+				showMicMessage: false,
+				scrollTarget: completionMsgEl || phase1,
+				onFail: function () {
+					btn1.disabled = false;
+					input1.readOnly = false;
+				}
+			});
+		}
+
+		btn2.addEventListener('click', function () {
+			stopSpeech();
+			cancelTts();
+			syncStrictAccentsFromDom();
+			var txt = (input2.value || '').trim();
+			if (!txt) {
+				setMessagePhase2Typewriter(i18n.empty || '', 'error');
+				return;
+			}
+			var p2 = phrases[phraseIx];
+			var targetRef2 = p2 && p2.target != null ? String(p2.target) : '';
+			if (!phase2PassesLocal(txt, targetRef2, PHASE2_SIM, PHASE2_WR)) {
+				setMessagePhase2Typewriter(i18n.phase2Fail || '', 'error');
+				return;
+			}
+			setMessagePhase2('', '');
+			btn2.disabled = true;
+			if (input2) {
+				input2.readOnly = true;
+			}
+			var totalWords = tokenizeWords(txt).length;
+			var micUsed = totalWords > 0 && micWordsThisPhrase >= Math.max(1, Math.ceil(totalWords * 0.2));
+
+			runPhraseCompletionFlow(txt, micUsed, {
+				scrollTarget: messagePhase2El || phase2,
+				onFail: function () {
+					btn2.disabled = false;
+					if (input2) {
+						input2.readOnly = false;
+					}
+				}
+			});
 		});
 
+	if (isResolveGo && notesWrap && notesPanel && analysisEl) {
+		notesWrap.hidden = false;
+		notesPanel.appendChild(analysisEl);
+	}
+
 	var startResume =
+		!isResolveGo &&
 		parseInt(cfg.savedStep, 10) === 2 && cfg.resumeAnalysis;
 	introReady.then(function () {
 		if (pendingStoryIntroTypewriter && cardEl) {
