@@ -18,6 +18,13 @@ class LLM_Learning_Modes {
 	const AJAX_ACTION  = 'llm_learning_mode_save';
 	const NONCE_ACTION = 'llm_learning_mode';
 
+	/** Opzioni di aiuto, indipendenti dalla modalità e salvate insieme a essa. */
+	const OPTIONS_USER_META   = '_llm_learning_options';
+	const OPTIONS_STORAGE_KEY = 'llm_learning_options';
+
+	/** Pulsante con le parole della soluzione mescolate a parole-esca. */
+	const OPTION_RANDOM_WORDS = 'random_words';
+
 	/** Modalità storica a due fasi. */
 	const MODE_LOVEREWRITE = 'loverewrite';
 
@@ -75,6 +82,96 @@ class LLM_Learning_Modes {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Opzioni di aiuto attivabili, valide per qualunque modalità.
+	 *
+	 * @return array<int, array{id: string, label: string, description: string}>
+	 */
+	public static function options() {
+		$options = array(
+			array(
+				'id'          => self::OPTION_RANDOM_WORDS,
+				'label'       => LLM_Phrase_Game_I18n::get( 'option_random_words_label' ),
+				'description' => LLM_Phrase_Game_I18n::get( 'option_random_words_desc' ),
+			),
+		);
+
+		/**
+		 * Permette di registrare nuove opzioni di aiuto.
+		 *
+		 * @param array<int, array{id: string, label: string, description: string}> $options
+		 */
+		$options = (array) apply_filters( 'llm_learning_mode_options', $options );
+
+		$out = array();
+		foreach ( $options as $option ) {
+			if ( ! is_array( $option ) || empty( $option['id'] ) ) {
+				continue;
+			}
+			$out[] = array(
+				'id'          => sanitize_key( (string) $option['id'] ),
+				'label'       => isset( $option['label'] ) ? (string) $option['label'] : (string) $option['id'],
+				'description' => isset( $option['description'] ) ? (string) $option['description'] : '',
+			);
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Tiene solo gli identificatori di opzioni realmente registrate.
+	 *
+	 * @param mixed $ids
+	 * @return array<int, string>
+	 */
+	public static function sanitize_options( $ids ) {
+		if ( ! is_array( $ids ) ) {
+			$ids = '' === $ids || null === $ids ? array() : explode( ',', (string) $ids );
+		}
+
+		$known = wp_list_pluck( self::options(), 'id' );
+		$out   = array();
+		foreach ( $ids as $id ) {
+			if ( ! is_scalar( $id ) ) {
+				continue;
+			}
+			$id = sanitize_key( (string) $id );
+			if ( '' !== $id && in_array( $id, $known, true ) && ! in_array( $id, $out, true ) ) {
+				$out[] = $id;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * @param int $user_id
+	 * @return array<int, string>
+	 */
+	public static function get_options_for_user( $user_id ) {
+		return self::sanitize_options( get_user_meta( (int) $user_id, self::OPTIONS_USER_META, true ) );
+	}
+
+	/**
+	 * @param int   $user_id
+	 * @param mixed $ids
+	 */
+	public static function set_options_for_user( $user_id, $ids ) {
+		update_user_meta( (int) $user_id, self::OPTIONS_USER_META, self::sanitize_options( $ids ) );
+	}
+
+	/**
+	 * Opzioni attive: dal profilo se loggato, altrimenti nessuna (gli ospiti usano localStorage lato JS).
+	 *
+	 * @return array<int, string>
+	 */
+	public static function current_options() {
+		if ( is_user_logged_in() ) {
+			return self::get_options_for_user( get_current_user_id() );
+		}
+		return array();
 	}
 
 	/**
@@ -206,6 +303,9 @@ class LLM_Learning_Modes {
 			'current'     => self::current(),
 			'defaultMode' => self::default_mode(),
 			'modes'       => self::all(),
+			'options'          => self::options(),
+			'currentOptions'   => self::current_options(),
+			'optionsStorageKey' => self::OPTIONS_STORAGE_KEY,
 			'savedMsg'    => LLM_Phrase_Game_I18n::get( 'learning_mode_saved' ),
 			'errorMsg'    => LLM_Phrase_Game_I18n::get( 'learning_mode_error' ),
 		);
@@ -226,10 +326,14 @@ class LLM_Learning_Modes {
 			wp_send_json_error( array( 'message' => LLM_Phrase_Game_I18n::get( 'learning_mode_error' ) ), 400 );
 		}
 
+		$posted_options = isset( $_POST['options'] ) ? wp_unslash( $_POST['options'] ) : array();
+		self::set_options_for_user( get_current_user_id(), $posted_options );
+
 		wp_send_json_success(
 			array(
-				'mode'  => $mode_id,
-				'label' => self::label( $mode_id ),
+				'mode'    => $mode_id,
+				'label'   => self::label( $mode_id ),
+				'options' => self::get_options_for_user( get_current_user_id() ),
 			)
 		);
 	}

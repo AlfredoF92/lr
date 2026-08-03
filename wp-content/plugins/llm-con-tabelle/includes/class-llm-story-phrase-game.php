@@ -86,6 +86,32 @@ class LLM_Story_Phrase_Game {
 	}
 
 	/**
+	 * Pulsante "Visualizza parole random" e contenitore delle parole (riempito via JS).
+	 *
+	 * Resta nascosto se l'opzione di aiuto non è attiva.
+	 *
+	 * @param string $uid    Prefisso ID univoco dell'istanza.
+	 * @param string $suffix Fase di appartenenza (1 / 2).
+	 * @return string
+	 */
+	private static function render_random_words_block( $uid, $suffix ) {
+		$label   = LLM_Phrase_Game_I18n::get( 'random_words_show' );
+		$aria    = LLM_Phrase_Game_I18n::get( 'random_words_aria' );
+		$list_id = $uid . '-random-words-' . $suffix;
+
+		return '<div class="llm-phrase-game__random-words llm-phrase-game__random-words--' . esc_attr( $suffix ) . '" hidden>'
+			. '<hr class="llm-phrase-game__divider llm-phrase-game__divider--random-words" role="presentation" aria-hidden="true" />'
+			. '<button type="button" class="llm-phrase-game__listen-target llm-phrase-game__random-words-toggle" aria-controls="' . esc_attr( $list_id ) . '">'
+			. '<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">'
+			. '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M4 5h7v5H4V5zm9 0h7v3h-7V5zM4 12h5v3H4v-3zm7 0h9v3h-9v-3zM4 17h9v2H4v-2zm11 0h5v2h-5v-2z"/></svg>'
+			. '</span>'
+			. '<span class="llm-phrase-game__listen-target-text">' . esc_html( $label ) . '</span>'
+			. '</button>'
+			. '<div class="llm-phrase-game__random-words-list" id="' . esc_attr( $list_id ) . '" role="group" aria-label="' . esc_attr( $aria ) . '" hidden></div>'
+			. '</div>';
+	}
+
+	/**
 	 * @param array<string, string> $atts Attributi shortcode.
 	 * @return string
 	 */
@@ -158,6 +184,7 @@ class LLM_Story_Phrase_Game {
 								<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
 								<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 							</button>
+							<?php echo self::render_random_words_block( $uid, '1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 						</div>
 						<div class="llm-phrase-game__actions">
 							<div class="llm-phrase-game__continue-block llm-phrase-game__continue-block--1">
@@ -232,6 +259,7 @@ class LLM_Story_Phrase_Game {
 							<span class="llm-phrase-game__mic-icon" aria-hidden="true">&#127908;</span>
 							<span class="llm-phrase-game__mic-text"><?php echo esc_html( $mic_btn_text ); ?></span>
 						</button>
+						<?php echo self::render_random_words_block( $uid, '2' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- metodo restituisce HTML escapato. ?>
 					</div>
 					<div class="llm-phrase-game__actions">
 						<div class="llm-phrase-game__continue-block llm-phrase-game__continue-block--2">
@@ -264,6 +292,8 @@ class LLM_Story_Phrase_Game {
 	private static function render_learning_mode_ui( $uid ) {
 		$modes        = LLM_Learning_Modes::all();
 		$current      = LLM_Learning_Modes::current();
+		$extras       = LLM_Learning_Modes::options();
+		$extras_on    = LLM_Learning_Modes::current_options();
 		$radio_name   = $uid . '-learning-mode';
 		$dialog_id    = $uid . '-learning-mode-dialog';
 		$title_id     = $uid . '-learning-mode-title';
@@ -292,6 +322,23 @@ class LLM_Story_Phrase_Game {
 						</label>
 						<?php endforeach; ?>
 					</div>
+					<?php if ( ! empty( $extras ) ) : ?>
+					<div class="llm-learning-mode__extras">
+						<hr class="llm-learning-mode__extras-divider" role="presentation" aria-hidden="true" />
+						<p class="llm-learning-mode__extras-title"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_tools_title' ) ); ?></p>
+						<div class="llm-learning-mode__extras-list">
+							<?php foreach ( $extras as $extra ) : ?>
+							<label class="llm-learning-mode__option llm-learning-mode__option--check<?php echo in_array( $extra['id'], $extras_on, true ) ? ' llm-learning-mode__option--active' : ''; ?>">
+								<input type="checkbox" class="llm-learning-mode__check" value="<?php echo esc_attr( $extra['id'] ); ?>" <?php checked( in_array( $extra['id'], $extras_on, true ) ); ?> />
+								<span class="llm-learning-mode__option-body">
+									<span class="llm-learning-mode__option-name"><?php echo esc_html( $extra['label'] ); ?></span>
+									<span class="llm-learning-mode__option-desc"><?php echo esc_html( $extra['description'] ); ?></span>
+								</span>
+							</label>
+							<?php endforeach; ?>
+						</div>
+					</div>
+					<?php endif; ?>
 					<p class="llm-learning-mode__msg" role="status" aria-live="polite"></p>
 					<div class="llm-learning-mode__actions">
 						<button type="button" class="llm-learning-mode__cancel"><?php echo esc_html( LLM_Phrase_Game_I18n::get( 'learning_mode_cancel' ) ); ?></button>
@@ -465,6 +512,8 @@ class LLM_Story_Phrase_Game {
 			'readGoFastPrompt'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_prompt' ),
 			'readGoFastNext'     => LLM_Phrase_Game_I18n::get( 'read_go_fast_next' ),
 			'readGoFastTarget'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_target' ),
+			'readGoFastExact'    => LLM_Phrase_Game_I18n::get( 'read_go_fast_exact' ),
+			'readGoFastAlmost'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_almost' ),
 			'readGoFastComplete' => LLM_Phrase_Game_I18n::get( 'read_go_fast_complete' ),
 			),
 			'gameFinished'        => $game_finished,
@@ -490,6 +539,9 @@ class LLM_Story_Phrase_Game {
 			'learningModeDefault' => LLM_Learning_Modes::default_mode(),
 			'learningModeStorageKey' => LLM_Learning_Modes::STORAGE_KEY,
 			'learningModeIsSaved' => is_user_logged_in(),
+			'learningOptions'     => LLM_Learning_Modes::current_options(),
+			'learningOptionsStorageKey' => LLM_Learning_Modes::OPTIONS_STORAGE_KEY,
+			'optionRandomWords'   => LLM_Learning_Modes::OPTION_RANDOM_WORDS,
 			)
 		);
 	}

@@ -320,6 +320,151 @@
 		return u === r;
 	}
 
+	/* ── Parole random di aiuto ──────────────────────────────────────────
+	 * Le esche sostituiscono lettere simili restando nella stessa classe
+	 * (vocale con vocale, consonante con consonante), così la parola sbagliata
+	 * si distingue solo leggendo con attenzione.
+	 */
+
+	var VOWEL_SWAPS = {
+		a: 'eo', e: 'ai', i: 'ey', o: 'au', u: 'oy', y: 'iu'
+	};
+
+	var CONSONANT_SWAPS = {
+		b: 'dp', c: 'gs', d: 'bp', f: 'lt', g: 'cq', h: 'kb', j: 'gz',
+		k: 'hc', l: 'ft', m: 'nw', n: 'mr', p: 'bq', q: 'gp', r: 'ns',
+		s: 'zc', t: 'fl', v: 'wb', w: 'mv', x: 'sk', z: 'sx'
+	};
+
+	/** Lettere che NFD non scompone perché il segno fa parte del glifo. */
+	var STANDALONE_LETTERS = { 'ł': 'l', 'ø': 'o', 'đ': 'd', 'ß': 's', 'æ': 'a', 'œ': 'o' };
+
+	var WORD_EDGE_RE = /^[^0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]+|[^0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]+$/g;
+
+	function baseLetter(ch) {
+		if (STANDALONE_LETTERS[ch]) {
+			return STANDALONE_LETTERS[ch];
+		}
+		if (typeof ''.normalize !== 'function') {
+			return ch;
+		}
+		return ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+	}
+
+	function shuffled(list) {
+		var out = list.slice();
+		for (var i = out.length - 1; i > 0; i--) {
+			var j = Math.floor(Math.random() * (i + 1));
+			var tmp = out[i];
+			out[i] = out[j];
+			out[j] = tmp;
+		}
+		return out;
+	}
+
+	/** Lettera simile della stessa classe, o null se non sostituibile. */
+	function swapLetter(ch) {
+		var lower = ch.toLowerCase();
+		var base = baseLetter(lower);
+		var pool = VOWEL_SWAPS[base] || CONSONANT_SWAPS[base] || '';
+		if (!pool) {
+			return null;
+		}
+		var next = pool.charAt(Math.floor(Math.random() * pool.length));
+		var isUpper = ch !== lower && ch === ch.toUpperCase();
+		return isUpper ? next.toUpperCase() : next;
+	}
+
+	/** Quante lettere alterare: più la parola è lunga, più cambia. */
+	function swapCountFor(length) {
+		if (length >= 8) {
+			return 2 + Math.floor(Math.random() * 2);
+		}
+		if (length >= 5) {
+			return 1 + Math.floor(Math.random() * 2);
+		}
+		return 1;
+	}
+
+	/**
+	 * Variante alterata di una parola: tocca solo le lettere interne, tranne
+	 * nelle parole di una o due lettere, dove agisce sull'ultima.
+	 *
+	 * @param {string} word
+	 * @returns {string|null} null se nessuna lettera è sostituibile.
+	 */
+	function mutateWord(word) {
+		var chars = word.split('');
+		var positions = [];
+		if (chars.length <= 2) {
+			positions.push(chars.length - 1);
+		} else {
+			for (var i = 1; i < chars.length - 1; i++) {
+				positions.push(i);
+			}
+		}
+		positions = shuffled(positions);
+
+		var wanted = swapCountFor(chars.length);
+		var done = 0;
+		for (var p = 0; p < positions.length && done < wanted; p++) {
+			var ix = positions[p];
+			var next = swapLetter(chars[ix]);
+			if (next && next !== chars[ix]) {
+				chars[ix] = next;
+				done++;
+			}
+		}
+		return done > 0 ? chars.join('') : null;
+	}
+
+	function stripMarkup(html) {
+		var holder = document.createElement('div');
+		holder.innerHTML = String(html || '');
+		return holder.textContent || '';
+	}
+
+	function splitHelperWords(text) {
+		return String(text || '')
+			.split(/\s+/)
+			.map(function (word) {
+				return word.replace(WORD_EDGE_RE, '');
+			})
+			.filter(function (word) {
+				return word.length > 0;
+			});
+	}
+
+	/**
+	 * Parole della soluzione più due esche ciascuna, tutte mescolate.
+	 *
+	 * Il confronto dei doppioni ignora le maiuscole: un'esca che coincide con
+	 * una parola corretta a meno del caso verrebbe accettata dalla validazione,
+	 * quindi non sarebbe più un'esca.
+	 */
+	function buildRandomWords(target) {
+		var words = splitHelperWords(stripMarkup(target));
+		var out = words.slice();
+		var seen = words.map(function (word) {
+			return word.toLowerCase();
+		});
+
+		words.forEach(function (word) {
+			for (var made = 0; made < 2; made++) {
+				for (var tries = 0; tries < 6; tries++) {
+					var decoy = mutateWord(word);
+					if (decoy && seen.indexOf(decoy.toLowerCase()) === -1) {
+						out.push(decoy);
+						seen.push(decoy.toLowerCase());
+						break;
+					}
+				}
+			}
+		});
+
+		return shuffled(out);
+	}
+
 	function init(root) {
 		if (!root || !window.llmPhraseGame) {
 			return;
@@ -381,7 +526,7 @@
 		var phase2RecapCounter   = qs(root, '.llm-phrase-game__phase2-recap__counter');
 	var phase2RecapIface     = qs(root, '.llm-phrase-game__phase2-recap__interface');
 	var phase2RecapPrompt    = qs(root, '.llm-phrase-game__phase2-recap__prompt');
-	var listenTargetBtn      = qs(root, '.llm-phrase-game__listen-target:not(.llm-phrase-game__listen-target--phase2):not(.llm-phrase-game__peek-target):not(.llm-phrase-game__notes-toggle)');
+	var listenTargetBtn      = qs(root, '.llm-phrase-game__listen-target:not(.llm-phrase-game__listen-target--phase2):not(.llm-phrase-game__peek-target):not(.llm-phrase-game__notes-toggle):not(.llm-phrase-game__random-words-toggle)');
 		var listenTargetBtnPhase2 = qs(root, '.llm-phrase-game__listen-target--phase2');
 		var composePhase1 = qs(root, '.llm-phrase-game__compose--phase1');
 		var composePhase2 = qs(root, '.llm-phrase-game__compose--phase2');
@@ -392,6 +537,21 @@
 	var notesToggleBtn  = qs(root, '.llm-phrase-game__notes-toggle');
 	var notesToggleText = qs(root, '.llm-phrase-game__notes-toggle-text');
 	var notesPanel      = qs(root, '.llm-phrase-game__notes-panel');
+
+	function randomWordsBlock(suffix, inputEl) {
+		var wrap = qs(root, '.llm-phrase-game__random-words--' + suffix);
+		return {
+			wrap: wrap,
+			input: inputEl,
+			toggle: wrap ? qs(wrap, '.llm-phrase-game__random-words-toggle') : null,
+			list: wrap ? qs(wrap, '.llm-phrase-game__random-words-list') : null
+		};
+	}
+
+	var randomWordsBlocks = [randomWordsBlock('1', input1), randomWordsBlock('2', input2)]
+		.filter(function (block) {
+			return block.wrap && block.toggle && block.list;
+		});
 
 		var MODE_LOVEREWRITE  = 'loverewrite';
 		var MODE_RESOLVE_GO   = 'resolve_go';
@@ -433,6 +593,22 @@
 		var introPromptKey = isReadGoFast
 			? 'readGoFastPrompt'
 			: (isResolveGo ? 'resolveGoPrompt' : 'translatePrompt');
+
+		/* Opzioni di aiuto: stessa regola della modalità, profilo o localStorage. */
+		function resolveLearningOptions() {
+			if (cfg.learningModeIsSaved) {
+				return Array.isArray(cfg.learningOptions) ? cfg.learningOptions : [];
+			}
+			try {
+				var raw = window.localStorage.getItem(cfg.learningOptionsStorageKey || 'llm_learning_options') || '';
+				return raw ? raw.split(',') : [];
+			} catch (e) {
+				return [];
+			}
+		}
+
+		var randomWordsOn =
+			resolveLearningOptions().indexOf(cfg.optionRandomWords || 'random_words') !== -1;
 
 		/* Intro storia: typewriter alla prima visita — blocca pulsante ascolto fino al termine */
 		var pendingStoryIntroTypewriter =
@@ -804,6 +980,62 @@
 			grammar: (p && p.grammar) || '',
 			target: (p && p.target) || '',
 			alt: (p && p.alt) || ''
+		});
+	}
+
+	function appendWordToInput(inputEl, word) {
+		if (!inputEl || inputEl.readOnly || inputEl.disabled) {
+			return;
+		}
+		var current = inputEl.value || '';
+		var separator = (current && !/\s$/.test(current)) ? ' ' : '';
+		inputEl.value = current + separator + word;
+		inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+		inputEl.focus();
+		var end = inputEl.value.length;
+		try {
+			inputEl.setSelectionRange(end, end);
+		} catch (e) {
+			/* Alcuni browser rifiutano la selezione su textarea non visibili. */
+		}
+	}
+
+	function renderRandomWords(block) {
+		if (!block.list) {
+			return;
+		}
+		var phrase = phrases[phraseIx];
+		block.list.innerHTML = '';
+		buildRandomWords((phrase && phrase.target) || '').forEach(function (word) {
+			var chip = document.createElement('button');
+			chip.type = 'button';
+			chip.className = 'llm-phrase-game__random-word';
+			chip.textContent = word;
+			chip.addEventListener('click', function () {
+				appendWordToInput(block.input, word);
+			});
+			block.list.appendChild(chip);
+		});
+	}
+
+	/* Le parole restano visibili fino alla frase successiva. */
+	function revealRandomWords(block) {
+		renderRandomWords(block);
+		block.list.hidden = false;
+		if (block.toggle) {
+			block.toggle.hidden = true;
+		}
+	}
+
+	function resetRandomWords() {
+		randomWordsBlocks.forEach(function (block) {
+			if (block.list) {
+				block.list.innerHTML = '';
+				block.list.hidden = true;
+			}
+			if (block.toggle) {
+				block.toggle.hidden = false;
+			}
 		});
 	}
 
@@ -2519,6 +2751,7 @@
 		hidePhase1Feedback();
 		hideLoadingNotes();
 		resetNotesPanel();
+		resetRandomWords();
 		cancelTts();
 		cancelAnalysisStream();
 			cancelStoryStream();
@@ -2963,20 +3196,30 @@
 			});
 		}
 
-		/** Modalità "Read and go fast": nessun controllo, si avanza anche a campo vuoto. */
+		/** Modalità "Read and go fast": nessun blocco, il feedback cambia in base a cosa ha scritto. */
 		function handleReadGoFastSubmit() {
+			syncStrictAccentsFromDom();
 			setMessage('');
 			setMessagePhase2('', '');
 			btn1.disabled = true;
 			input1.readOnly = true;
 			setNotesOpen(false);
 
+			var txt = (input1.value || '').trim();
 			var p = phrases[phraseIx];
 			var targetRef = p && p.target != null ? String(p.target) : '';
+			var opening = '';
+			if (!txt) {
+				opening = i18n.readGoFastTarget || '';
+			} else if (phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
+				opening = i18n.readGoFastExact || i18n.bravoCorrect || '';
+			} else {
+				opening = i18n.readGoFastAlmost || i18n.readGoFastTarget || '';
+			}
 
-			runPhraseCompletionFlow((input1.value || '').trim(), false, {
+			runPhraseCompletionFlow(txt, false, {
 				messages: [
-					targetRef ? (i18n.readGoFastTarget || '') : '',
+					opening,
 					{ text: targetRef, html: true },
 					i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
 				],
@@ -3030,6 +3273,15 @@
 
 	if (isReadGoFast && btn1 && i18n.readGoFastNext) {
 		btn1.textContent = i18n.readGoFastNext;
+	}
+
+	if (randomWordsOn) {
+		randomWordsBlocks.forEach(function (block) {
+			block.wrap.hidden = false;
+			block.toggle.addEventListener('click', function () {
+				revealRandomWords(block);
+			});
+		});
 	}
 
 	var startResume =

@@ -9,6 +9,49 @@
 		return (cfg && cfg.storageKey) ? cfg.storageKey : 'llm_learning_mode';
 	}
 
+	function optionsStorageKey() {
+		return (cfg && cfg.optionsStorageKey) ? cfg.optionsStorageKey : 'llm_learning_options';
+	}
+
+	/** Le opzioni viaggiano come lista di id separati da virgola. */
+	function sanitizeOptions(ids) {
+		if (!cfg || !cfg.options) { return []; }
+		var out = [];
+		(ids || []).forEach(function (id) {
+			for (var i = 0; i < cfg.options.length; i++) {
+				if (cfg.options[i].id === id && out.indexOf(id) === -1) {
+					out.push(id);
+					return;
+				}
+			}
+		});
+		return out;
+	}
+
+	function readStoredOptions() {
+		try {
+			var raw = window.localStorage.getItem(optionsStorageKey()) || '';
+			return sanitizeOptions(raw ? raw.split(',') : []);
+		} catch (e) {
+			return [];
+		}
+	}
+
+	function writeStoredOptions(ids) {
+		try {
+			window.localStorage.setItem(optionsStorageKey(), ids.join(','));
+		} catch (e) {
+			/* Storage non disponibile: le opzioni restano spente. */
+		}
+	}
+
+	/** Utenti loggati: vince il profilo. Ospiti: localStorage. */
+	function resolveOptions() {
+		if (!cfg) { return []; }
+		if (cfg.isLoggedIn) { return sanitizeOptions(cfg.currentOptions || []); }
+		return readStoredOptions();
+	}
+
 	function isValidMode(id) {
 		if (!id || !cfg || !cfg.modes) { return false; }
 		for (var i = 0; i < cfg.modes.length; i++) {
@@ -62,11 +105,27 @@
 		});
 	}
 
-	function syncOptionActive(radio) {
-		var option = radio.closest('.llm-learning-mode__option');
+	function syncOptionActive(input) {
+		var option = input.closest('.llm-learning-mode__option');
 		if (option) {
-			option.classList.toggle('llm-learning-mode__option--active', radio.checked);
+			option.classList.toggle('llm-learning-mode__option--active', input.checked);
 		}
+	}
+
+	function syncRootToOptions(root, ids) {
+		root.dataset.currentOptions = ids.join(',');
+		root.querySelectorAll('.llm-learning-mode__check').forEach(function (check) {
+			check.checked = ids.indexOf(check.value) !== -1;
+			syncOptionActive(check);
+		});
+	}
+
+	function selectedOptions(root) {
+		var ids = [];
+		root.querySelectorAll('.llm-learning-mode__check:checked').forEach(function (check) {
+			ids.push(check.value);
+		});
+		return sanitizeOptions(ids);
 	}
 
 	function overlayOf(root) {
@@ -79,6 +138,7 @@
 		lastFocused = document.activeElement;
 		setMessage(root, '', false);
 		syncRootToMode(root, root.dataset.currentMode || resolveMode());
+		syncRootToOptions(root, resolveOptions());
 		overlay.hidden = false;
 		var checked = overlay.querySelector('.llm-learning-mode__radio:checked');
 		if (checked) { checked.focus(); }
@@ -116,7 +176,11 @@
 		var mode = selectedMode(root);
 		if (!isValidMode(mode)) { return; }
 
-		if (mode === (root.dataset.currentMode || '')) {
+		var options = selectedOptions(root);
+		var sameMode = mode === (root.dataset.currentMode || '');
+		var sameOptions = options.join(',') === resolveOptions().join(',');
+
+		if (sameMode && sameOptions) {
 			closeDialog(root);
 			return;
 		}
@@ -125,6 +189,7 @@
 
 		if (!cfg.isLoggedIn) {
 			writeStoredMode(mode);
+			writeStoredOptions(options);
 			setMessage(root, cfg.savedMsg || '', false);
 			setTimeout(function () { window.location.reload(); }, 700);
 			return;
@@ -134,6 +199,9 @@
 		body.append('action', cfg.action);
 		body.append('nonce', cfg.nonce);
 		body.append('mode', mode);
+		options.forEach(function (id) {
+			body.append('options[]', id);
+		});
 
 		fetch(cfg.ajaxUrl, {
 			method: 'POST',
@@ -145,6 +213,7 @@
 			.then(function (data) {
 				if (data && data.success) {
 					writeStoredMode(mode);
+					writeStoredOptions(options);
 					setMessage(root, cfg.savedMsg || '', false);
 					setTimeout(function () { window.location.reload(); }, 700);
 					return;
@@ -165,8 +234,10 @@
 		if (!roots.length) { return; }
 
 		var mode = resolveMode();
+		var options = resolveOptions();
 		roots.forEach(function (root) {
 			syncRootToMode(root, mode);
+			syncRootToOptions(root, options);
 		});
 
 		document.addEventListener('click', function (e) {
@@ -188,6 +259,11 @@
 		});
 
 		document.addEventListener('change', function (e) {
+			var check = e.target.closest('.llm-learning-mode__check');
+			if (check) {
+				syncOptionActive(check);
+				return;
+			}
 			var radio = e.target.closest('.llm-learning-mode__radio');
 			if (!radio) { return; }
 			var root = radio.closest('.llm-learning-mode');
@@ -203,8 +279,9 @@
 		});
 	}
 
-	/** Modalità attiva, per gli altri script del gioco frasi. */
+	/** Modalità e opzioni attive, per gli altri script del gioco frasi. */
 	window.llmGetLearningMode = resolveMode;
+	window.llmGetLearningOptions = resolveOptions;
 
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', init);
