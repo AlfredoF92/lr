@@ -194,8 +194,9 @@ class LLM_Story_Phrase_Game {
 						</div>
 					</div>
 				</div>
-			<div class="llm-phrase-game__message" role="alert"></div>
-			<div class="llm-phrase-game__message-phase2 llm-phrase-game__message-solo" role="status" aria-live="polite"></div>
+		<div class="llm-phrase-game__message" role="alert"></div>
+		<div class="llm-phrase-game__db-status" role="status" aria-live="polite" aria-atomic="true"></div>
+		<div class="llm-phrase-game__message-phase2 llm-phrase-game__message-solo" role="status" aria-live="polite"></div>
 			<div class="llm-phrase-game__notes" hidden>
 				<button type="button" class="llm-phrase-game__listen-target llm-phrase-game__notes-toggle" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-notes-panel">
 					<span class="llm-phrase-game__listen-target-icon" aria-hidden="true">
@@ -512,6 +513,8 @@ class LLM_Story_Phrase_Game {
 			'readGoFastPrompt'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_prompt' ),
 			'readGoFastNext'     => LLM_Phrase_Game_I18n::get( 'read_go_fast_next' ),
 			'readGoFastTarget'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_target' ),
+			'readGoFastSaved'    => LLM_Phrase_Game_I18n::get( 'read_go_fast_saved' ),
+			'readGoFastSaveError' => LLM_Phrase_Game_I18n::get( 'read_go_fast_save_error' ),
 			'readGoFastExact'    => LLM_Phrase_Game_I18n::get( 'read_go_fast_exact' ),
 			'readGoFastAlmost'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_almost' ),
 			'readGoFastComplete' => LLM_Phrase_Game_I18n::get( 'read_go_fast_complete' ),

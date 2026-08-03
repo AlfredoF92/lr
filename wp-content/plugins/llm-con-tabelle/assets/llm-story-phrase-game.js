@@ -351,6 +351,18 @@
 		return ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 	}
 
+	/** Accento, tilde, ogonek, ł, ø…: queste lettere restano intatte anche nell'esca. */
+	function hasDiacritic(ch) {
+		var lower = ch.toLowerCase();
+		if (STANDALONE_LETTERS[lower]) {
+			return true;
+		}
+		if (typeof ''.normalize !== 'function') {
+			return lower !== baseLetter(lower);
+		}
+		return lower.normalize('NFD').length > 1;
+	}
+
 	function shuffled(list) {
 		var out = list.slice();
 		for (var i = out.length - 1; i > 0; i--) {
@@ -365,6 +377,9 @@
 	/** Lettera simile della stessa classe, o null se non sostituibile. */
 	function swapLetter(ch) {
 		var lower = ch.toLowerCase();
+		if (hasDiacritic(ch)) {
+			return null;
+		}
 		var base = baseLetter(lower);
 		var pool = VOWEL_SWAPS[base] || CONSONANT_SWAPS[base] || '';
 		if (!pool) {
@@ -375,20 +390,10 @@
 		return isUpper ? next.toUpperCase() : next;
 	}
 
-	/** Quante lettere alterare: più la parola è lunga, più cambia. */
-	function swapCountFor(length) {
-		if (length >= 8) {
-			return 2 + Math.floor(Math.random() * 2);
-		}
-		if (length >= 5) {
-			return 1 + Math.floor(Math.random() * 2);
-		}
-		return 1;
-	}
-
 	/**
-	 * Variante alterata di una parola: tocca solo le lettere interne, tranne
-	 * nelle parole di una o due lettere, dove agisce sull'ultima.
+	 * Variante alterata di una parola: cambia una sola lettera, mai una
+	 * con accento o diacritico. Tocca le lettere interne; nelle parole di
+	 * una o due lettere agisce sull'ultima.
 	 *
 	 * @param {string} word
 	 * @returns {string|null} null se nessuna lettera è sostituibile.
@@ -405,17 +410,15 @@
 		}
 		positions = shuffled(positions);
 
-		var wanted = swapCountFor(chars.length);
-		var done = 0;
-		for (var p = 0; p < positions.length && done < wanted; p++) {
+		for (var p = 0; p < positions.length; p++) {
 			var ix = positions[p];
 			var next = swapLetter(chars[ix]);
 			if (next && next !== chars[ix]) {
 				chars[ix] = next;
-				done++;
+				return chars.join('');
 			}
 		}
-		return done > 0 ? chars.join('') : null;
+		return null;
 	}
 
 	function stripMarkup(html) {
@@ -436,7 +439,7 @@
 	}
 
 	/**
-	 * Parole della soluzione più due esche ciascuna, tutte mescolate.
+	 * Parole della soluzione più una esca ciascuna, tutte mescolate.
 	 *
 	 * Il confronto dei doppioni ignora le maiuscole: un'esca che coincide con
 	 * una parola corretta a meno del caso verrebbe accettata dalla validazione,
@@ -450,14 +453,12 @@
 		});
 
 		words.forEach(function (word) {
-			for (var made = 0; made < 2; made++) {
-				for (var tries = 0; tries < 6; tries++) {
-					var decoy = mutateWord(word);
-					if (decoy && seen.indexOf(decoy.toLowerCase()) === -1) {
-						out.push(decoy);
-						seen.push(decoy.toLowerCase());
-						break;
-					}
+			for (var tries = 0; tries < 6; tries++) {
+				var decoy = mutateWord(word);
+				if (decoy && seen.indexOf(decoy.toLowerCase()) === -1) {
+					out.push(decoy);
+					seen.push(decoy.toLowerCase());
+					break;
 				}
 			}
 		});
@@ -533,6 +534,7 @@
 	var feedbackEl      = qs(root, '.llm-phrase-game__phase1-feedback');
 	var loadingNotesEl  = qs(root, '.llm-phrase-game__loading-notes');
 	var messageSoloEl   = qs(root, '.llm-phrase-game__message-solo');
+	var dbStatusEl      = qs(root, '.llm-phrase-game__db-status');
 	var notesWrap       = qs(root, '.llm-phrase-game__notes');
 	var notesToggleBtn  = qs(root, '.llm-phrase-game__notes-toggle');
 	var notesToggleText = qs(root, '.llm-phrase-game__notes-toggle-text');
@@ -3196,11 +3198,38 @@
 			});
 		}
 
-		/** Modalità "Read and go fast": nessun blocco, il feedback cambia in base a cosa ha scritto. */
+		/** Mostra il messaggio di stato DB con fade-in per `showMs` ms, poi fade-out. Restituisce una Promise. */
+		function showDbStatus(text, isError, showMs) {
+			if (!dbStatusEl) {
+				return sleepMs(showMs || 1200);
+			}
+			dbStatusEl.textContent = text || '';
+			dbStatusEl.classList.toggle('llm-phrase-game__db-status--ok', !isError);
+			dbStatusEl.classList.toggle('llm-phrase-game__db-status--error', !!isError);
+			/* force reflow so transition fires */
+			void dbStatusEl.offsetWidth;
+			dbStatusEl.classList.add('llm-phrase-game__db-status--visible');
+			return sleepMs(showMs || 1200).then(function () {
+				dbStatusEl.classList.remove('llm-phrase-game__db-status--visible');
+				/* aspetta la transizione di uscita (350 ms) */
+				return sleepMs(400);
+			});
+		}
+
+		function clearDbStatus() {
+			if (!dbStatusEl) { return; }
+			dbStatusEl.classList.remove('llm-phrase-game__db-status--visible');
+			dbStatusEl.classList.remove('llm-phrase-game__db-status--ok');
+			dbStatusEl.classList.remove('llm-phrase-game__db-status--error');
+			dbStatusEl.textContent = '';
+		}
+
+		/** Modalità "Read and go fast": AJAX prima, status DB, poi feedback. */
 		function handleReadGoFastSubmit() {
 			syncStrictAccentsFromDom();
 			setMessage('');
 			setMessagePhase2('', '');
+			clearDbStatus();
 			btn1.disabled = true;
 			input1.readOnly = true;
 			setNotesOpen(false);
@@ -3208,28 +3237,84 @@
 			var txt = (input1.value || '').trim();
 			var p = phrases[phraseIx];
 			var targetRef = p && p.target != null ? String(p.target) : '';
-			var opening = '';
-			if (!txt) {
-				opening = i18n.readGoFastTarget || '';
-			} else if (phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
-				opening = i18n.readGoFastExact || i18n.bravoCorrect || '';
-			} else {
-				opening = i18n.readGoFastAlmost || i18n.readGoFastTarget || '';
-			}
 
-			runPhraseCompletionFlow(txt, false, {
-				messages: [
-					opening,
-					{ text: targetRef, html: true },
-					i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
-				],
-				holdMs: 1200,
-				scrollTarget: completionMsgEl || phase1,
-				onFail: function () {
-					btn1.disabled = false;
-					input1.readOnly = false;
+			/* 1. Salva SUBITO nel DB (bypass=true → il server accetta sempre) */
+			postCheck(2, txt, false, function (json) {
+				if (!json || !json.success) {
+					/* Errore: mostra messaggio, sblocca UI, non avanzare */
+					var errMsg = (json && json.data && json.data.message)
+						|| i18n.readGoFastSaveError
+						|| i18n.ajaxError
+						|| '';
+					showDbStatus(errMsg, true, 2500).then(function () {
+						btn1.disabled = false;
+						input1.readOnly = false;
+					});
+					return;
 				}
-			});
+
+				/* 2. Successo: breve "Salvato nel database" poi il feedback */
+				var savedMsg = i18n.readGoFastSaved || 'Salvato nel database.';
+				showDbStatus(savedMsg, false, 1400).then(function () {
+					/* 3. Avvia la sequenza feedback (senza AJAX, il check è già fatto) */
+					var opening = '';
+					if (!txt) {
+						opening = i18n.readGoFastTarget || '';
+					} else if (phase2PassesLocal(txt, targetRef, PHASE2_SIM, PHASE2_WR)) {
+						opening = i18n.readGoFastExact || i18n.bravoCorrect || '';
+					} else {
+						opening = i18n.readGoFastAlmost || i18n.readGoFastTarget || '';
+					}
+
+					var messages = [
+						opening,
+						{ text: targetRef, html: true },
+						i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
+					];
+
+					/* Aggiorna la progress bar se il server ha restituito dati */
+					var d = json.data || {};
+					if (typeof window.llmUpdateStoryProgressBar === 'function' && d.phrases_total != null) {
+						var doneBar = parseInt(d.phrases_done, 10);
+						if (isNaN(doneBar)) { doneBar = 0; }
+						var totalBar = parseInt(d.phrases_total, 10);
+						if (isNaN(totalBar)) { totalBar = phrases.length; }
+						window.llmUpdateStoryProgressBar(String(storyId), doneBar, totalBar);
+					}
+
+					setMessagePhase2('', '');
+					if (completionMsgEl) {
+						completionMsgEl.innerHTML = '';
+						completionMsgEl.classList.add('llm-phrase-game__message-phase2--success');
+					}
+
+					var scrollTarget = completionMsgEl || phase1;
+					var typed = messages.reduce(function (chain, msg, ix) {
+						var isObj = !!msg && 'object' === typeof msg;
+						var text = isObj ? (msg.text || '') : (msg || '');
+						var asHtml = isObj && !!msg.html;
+						return chain.then(function () {
+							return ix > 0 ? sleepMs(300) : null;
+						}).then(function () {
+							return text ? appendMessagePhase2Typewriter(text, asHtml) : null;
+						});
+					}, smoothScrollIntoCenter(scrollTarget));
+
+					typed.then(function () {
+						return sleepMs(1200);
+					}).then(function () {
+						resetAnalysis();
+						if (d.has_more && d.next_index !== null && d.next_index !== undefined) {
+							phraseIx = parseInt(d.next_index, 10);
+							if (isNaN(phraseIx)) { phraseIx = phrases.length; }
+							loadPhrase(false);
+						} else {
+							phraseIx = phrases.length;
+							loadPhrase(false);
+						}
+					});
+				});
+			}, true /* bypass */);
 		}
 
 		btn2.addEventListener('click', function () {

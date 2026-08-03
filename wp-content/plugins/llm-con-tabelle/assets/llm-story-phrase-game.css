@@ -918,6 +918,31 @@
 	font-weight: 500;
 }
 
+/* ─── Messaggio di stato DB (Read and go fast) ───────────────────────── */
+
+.llm-phrase-game__db-status {
+	margin-top: 0.75rem;
+	font-size: 0.78rem;
+	font-weight: 500;
+	line-height: 1.4;
+	opacity: 0;
+	transition: opacity 0.35s ease;
+	pointer-events: none;
+}
+
+.llm-phrase-game__db-status--visible {
+	opacity: 1;
+}
+
+.llm-phrase-game__db-status--ok {
+	color: #2d6a31;
+}
+
+.llm-phrase-game__db-status--error {
+	color: #a32020;
+	font-weight: 700;
+}
+
 .llm-phrase-game__phase1-feedback {
 	margin-top: 1.25rem;
 	font-weight: 700;
