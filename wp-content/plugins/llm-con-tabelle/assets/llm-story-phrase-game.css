@@ -1376,6 +1376,10 @@
 	margin-top: 0.85rem;
 }
 
+.llm-phrase-game__inverted-hint[hidden] {
+	display: none !important;
+}
+
 .llm-phrase-game__inverted-hint-panel {
 	margin-top: 0.55rem;
 	padding: 0.65rem 0.75rem;
