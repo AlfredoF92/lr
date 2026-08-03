@@ -45,6 +45,9 @@ class LLM_Home_Redirect {
 		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
 			return;
 		}
+		if ( self::should_bypass_for_site_editors() ) {
+			return;
+		}
 		if ( ! get_option( self::OPTION_FLAG ) ) {
 			return;
 		}
@@ -72,6 +75,43 @@ class LLM_Home_Redirect {
 	}
 
 	/**
+	 * Nessun redirect se stai modificando il sito (admin WP / Elementor / Customizer).
+	 *
+	 * @return bool
+	 */
+	private static function should_bypass_for_site_editors() {
+		if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+
+		if ( is_customize_preview() || is_preview() ) {
+			return true;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- solo rilevamento contesto editor.
+		if ( ! empty( $_GET['elementor-preview'] ) || ! empty( $_GET['elementor_library'] ) ) {
+			return true;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['action'] ) && 'elementor' === sanitize_key( wp_unslash( $_GET['action'] ) ) ) {
+			return true;
+		}
+
+		if ( class_exists( '\Elementor\Plugin' ) ) {
+			$plugin = \Elementor\Plugin::$instance;
+			if ( isset( $plugin->editor ) && method_exists( $plugin->editor, 'is_edit_mode' ) && $plugin->editor->is_edit_mode() ) {
+				return true;
+			}
+			if ( isset( $plugin->preview ) && method_exists( $plugin->preview, 'is_preview_mode' ) && $plugin->preview->is_preview_mode() ) {
+				return true;
+			}
+		}
+
+		return (bool) apply_filters( 'llm_home_redirect_bypass', false );
+	}
+
+	/**
 	 * Render shortcode: attiva il redirect e fallback JS se siamo ancora in home.
 	 *
 	 * @param array<string,string>|string $atts
@@ -86,6 +126,10 @@ class LLM_Home_Redirect {
 
 		if ( ! get_option( self::OPTION_FLAG ) ) {
 			update_option( self::OPTION_FLAG, '1', true );
+		}
+
+		if ( self::should_bypass_for_site_editors() ) {
+			return '';
 		}
 
 		$pair = self::resolve_pair();
