@@ -124,6 +124,11 @@
 		});
 	}
 
+	/** Default strumenti utili nel popup quando si sceglie una modalità “normale”. */
+	function defaultPopupOptions() {
+		return sanitizeOptions(['random_words', 'listen_replay_loop']);
+	}
+
 	/** In "Gioca al contrario" gli strumenti utili si azzerano e restano disabilitati. */
 	function applyOptionsAvailability(root, mode) {
 		var disabled = modeDisablesOptions(mode);
@@ -142,6 +147,18 @@
 		if (disabled) {
 			root.dataset.currentOptions = '';
 		}
+	}
+
+	/**
+	 * Solo UI del popup: invertito → niente strumenti;
+	 * altre modalità → parole random + riascolto loop checkati di default.
+	 */
+	function applyPopupOptionsForMode(root, mode) {
+		applyOptionsAvailability(root, mode);
+		if (modeDisablesOptions(mode)) {
+			return;
+		}
+		syncRootToOptions(root, defaultPopupOptions());
 	}
 
 	function selectedOptions(root) {
@@ -306,10 +323,7 @@
 			var root = radio.closest('.llm-learning-mode');
 			if (!root) { return; }
 			root.querySelectorAll('.llm-learning-mode__radio').forEach(syncOptionActive);
-			applyOptionsAvailability(root, radio.value);
-			if (!modeDisablesOptions(radio.value)) {
-				syncRootToOptions(root, resolveOptions());
-			}
+			applyPopupOptionsForMode(root, radio.value);
 		});
 
 		document.addEventListener('keydown', function (e) {

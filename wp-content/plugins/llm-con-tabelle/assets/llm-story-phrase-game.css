@@ -1262,6 +1262,13 @@
 	margin-top: 0;
 	margin-bottom: 2rem;
 	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.llm-phrase-game--single-phase .llm-phrase-game__notes-panel {
+	width: 100%;
 }
 
 .llm-phrase-game__notes-panel[hidden] {
