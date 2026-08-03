@@ -1279,7 +1279,7 @@
 
 /* ─── Fase unica: messaggi di esito e appunti a richiesta ────────────── */
 
-.llm-phrase-game:not(.llm-phrase-game--mode-resolve-go) .llm-phrase-game__message-solo {
+.llm-phrase-game:not(.llm-phrase-game--single-phase) .llm-phrase-game__message-solo {
 	display: none;
 }
 

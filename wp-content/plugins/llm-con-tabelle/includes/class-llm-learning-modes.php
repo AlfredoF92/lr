@@ -24,6 +24,9 @@ class LLM_Learning_Modes {
 	/** Fase unica: traduzione corretta e avanti. */
 	const MODE_RESOLVE_GO = 'resolve_go';
 
+	/** Fase unica senza controlli: si avanza sempre. */
+	const MODE_READ_GO_FAST = 'read_go_fast';
+
 	public static function init() {
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( __CLASS__, 'ajax_save' ) );
 	}
@@ -44,6 +47,11 @@ class LLM_Learning_Modes {
 				'id'          => self::MODE_RESOLVE_GO,
 				'label'       => LLM_Phrase_Game_I18n::get( 'mode_resolve_go_label' ),
 				'description' => LLM_Phrase_Game_I18n::get( 'mode_resolve_go_desc' ),
+			),
+			array(
+				'id'          => self::MODE_READ_GO_FAST,
+				'label'       => LLM_Phrase_Game_I18n::get( 'mode_read_go_fast_label' ),
+				'description' => LLM_Phrase_Game_I18n::get( 'mode_read_go_fast_desc' ),
 			),
 		);
 
@@ -129,6 +137,42 @@ class LLM_Learning_Modes {
 			return self::get_for_user( get_current_user_id() );
 		}
 		return self::default_mode();
+	}
+
+	/**
+	 * Modalità da applicare a una richiesta AJAX.
+	 *
+	 * Per gli utenti loggati vale sempre il profilo: è l'unico dato di cui il server
+	 * si fida, visto che da qui dipendono punti e avanzamento. Gli ospiti tengono la
+	 * scelta in localStorage, quindi la modalità arriva dal client e va solo validata.
+	 *
+	 * @param string $posted_mode Modalità dichiarata dal client.
+	 * @return string
+	 */
+	public static function for_request( $posted_mode = '' ) {
+		if ( is_user_logged_in() ) {
+			return self::get_for_user( get_current_user_id() );
+		}
+		$posted_mode = sanitize_key( (string) $posted_mode );
+		return self::is_valid( $posted_mode ) ? $posted_mode : self::default_mode();
+	}
+
+	/**
+	 * Se la modalità avanza senza controllare il testo scritto dall'utente.
+	 *
+	 * @param string $mode_id
+	 * @return bool
+	 */
+	public static function skips_validation( $mode_id ) {
+		$skips = self::MODE_READ_GO_FAST === sanitize_key( (string) $mode_id );
+
+		/**
+		 * Permette a modalità registrate da terzi di saltare la validazione.
+		 *
+		 * @param bool   $skips
+		 * @param string $mode_id
+		 */
+		return (bool) apply_filters( 'llm_learning_mode_skips_validation', $skips, $mode_id );
 	}
 
 	/**

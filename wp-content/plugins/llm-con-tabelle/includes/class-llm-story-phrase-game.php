@@ -462,6 +462,10 @@ class LLM_Story_Phrase_Game {
 			'notesToggleShow'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_show' ),
 			'notesToggleHide'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_hide' ),
 			'resolveGoFail'    => LLM_Phrase_Game_I18n::get( 'resolve_go_fail' ),
+			'readGoFastPrompt'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_prompt' ),
+			'readGoFastNext'     => LLM_Phrase_Game_I18n::get( 'read_go_fast_next' ),
+			'readGoFastTarget'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_target' ),
+			'readGoFastComplete' => LLM_Phrase_Game_I18n::get( 'read_go_fast_complete' ),
 			),
 			'gameFinished'        => $game_finished,
 			'savedPhraseIndex'    => $saved_phrase_ix,
@@ -515,13 +519,17 @@ class LLM_Story_Phrase_Game {
 
 		$target = isset( $row['target'] ) ? (string) $row['target'] : '';
 
-		if ( '' === trim( $user ) ) {
+		$posted_mode      = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+		$mode             = LLM_Learning_Modes::for_request( $posted_mode );
+		$skips_validation = LLM_Learning_Modes::skips_validation( $mode );
+
+		if ( ! $skips_validation && '' === trim( $user ) ) {
 			wp_send_json_error( array( 'message' => LLM_Phrase_Game_I18n::get( 'empty_input' ) ) );
 		}
 
 		if ( 1 === $phase ) {
 			$bypass_phase1 = isset( $_POST['phase1_bypass'] ) && '1' === $_POST['phase1_bypass'];
-			if ( ! $bypass_phase1 ) {
+			if ( ! $bypass_phase1 && ! $skips_validation ) {
 				$ratio = self::reference_words_found_ratio( $user, $target );
 				if ( $ratio < self::PHASE1_MIN_RATIO ) {
 					wp_send_json_error(
@@ -553,7 +561,7 @@ class LLM_Story_Phrase_Game {
 
 	if ( 2 === $phase ) {
 		$client_strict = isset( $_POST['strict_accents'] ) ? ( '1' === $_POST['strict_accents'] ) : null;
-		if ( ! self::phase2_passes( $user, $target, $client_strict ) ) {
+		if ( ! $skips_validation && ! self::phase2_passes( $user, $target, $client_strict ) ) {
 			wp_send_json_error(
 				array(
 					'message' => LLM_Phrase_Game_I18n::get( 'phase2_fail' ),

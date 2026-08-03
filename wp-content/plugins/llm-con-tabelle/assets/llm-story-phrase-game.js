@@ -393,8 +393,9 @@
 	var notesToggleText = qs(root, '.llm-phrase-game__notes-toggle-text');
 	var notesPanel      = qs(root, '.llm-phrase-game__notes-panel');
 
-		var MODE_LOVEREWRITE = 'loverewrite';
-		var MODE_RESOLVE_GO  = 'resolve_go';
+		var MODE_LOVEREWRITE  = 'loverewrite';
+		var MODE_RESOLVE_GO   = 'resolve_go';
+		var MODE_READ_GO_FAST = 'read_go_fast';
 
 		/* Utente loggato: vince il profilo. Ospite: localStorage, poi default. */
 		function resolveLearningMode() {
@@ -417,11 +418,21 @@
 		if (!learningMode) {
 			learningMode = MODE_LOVEREWRITE;
 		}
-		var isResolveGo = learningMode === MODE_RESOLVE_GO;
+		var isResolveGo   = learningMode === MODE_RESOLVE_GO;
+		var isReadGoFast  = learningMode === MODE_READ_GO_FAST;
+		/* Modalità con la sola fase 1: stesso layout, cambia solo cosa succede al click. */
+		var isSinglePhase = isResolveGo || isReadGoFast;
 		root.classList.add('llm-phrase-game--mode-' + learningMode.replace(/_/g, '-'));
+		if (isSinglePhase) {
+			root.classList.add('llm-phrase-game--single-phase');
+		}
 
 		/* Dove finiscono i messaggi di completamento frase. */
-		var completionMsgEl = (isResolveGo && messageSoloEl) ? messageSoloEl : messagePhase2El;
+		var completionMsgEl = (isSinglePhase && messageSoloEl) ? messageSoloEl : messagePhase2El;
+
+		var introPromptKey = isReadGoFast
+			? 'readGoFastPrompt'
+			: (isResolveGo ? 'resolveGoPrompt' : 'translatePrompt');
 
 		/* Intro storia: typewriter alla prima visita — blocca pulsante ascolto fino al termine */
 		var pendingStoryIntroTypewriter =
@@ -2404,7 +2415,7 @@
 			});
 		}
 
-		function appendMessagePhase2Typewriter(text) {
+		function appendMessagePhase2Typewriter(text, asHtml) {
 			if (!completionMsgEl) {
 				return Promise.resolve();
 			}
@@ -2413,9 +2424,12 @@
 			var line = document.createElement('p');
 			line.className = 'llm-phrase-game__message-phase2-line';
 			completionMsgEl.appendChild(line);
-			return typewriterInto(line, text || '', function () {
+			var alive = function () {
 				return phase2MessageRun === run;
-			});
+			};
+			return asHtml
+				? typewriterHtmlInto(line, text || '', alive, TYPE_TICK_MS)
+				: typewriterInto(line, text || '', alive);
 		}
 
 		function showPhase(n) {
@@ -2598,7 +2612,7 @@
 			renderProgress();
 			runPhraseIntroTypewriter(
 				p.interface || '',
-				t(isResolveGo ? 'resolveGoPrompt' : 'translatePrompt', targetLang),
+				t(introPromptKey, targetLang),
 				introId
 			).then(function () {
 				if (phraseIntroRun !== introId) {
@@ -2629,6 +2643,7 @@
 		body.set('user_text', userText);
 		body.set('mic_used', micUsed ? '1' : '0');
 		body.set('phase1_bypass', bypass ? '1' : '0');
+		body.set('mode', learningMode);
 		var strictAccents = window.llmPhraseGame && window.llmPhraseGame.strictAccents !== false;
 		body.set('strict_accents', strictAccents ? '1' : '0');
 
@@ -2681,6 +2696,11 @@
 	btn1.addEventListener('click', function () {
 		stopSpeech();
 		cancelTts();
+
+		if (isReadGoFast) {
+			handleReadGoFastSubmit();
+			return;
+		}
 
 		if (isResolveGo) {
 			handleResolveGoSubmit();
@@ -2803,13 +2823,27 @@
 		 *
 		 * @param {string}   txt      Testo validato dell'utente.
 		 * @param {boolean}  micUsed  Se assegnare il punto microfono.
-		 * @param {{scrollTarget?: Element, showMicMessage?: boolean, onFail?: function(string):void}} opts
+		 * @param {{scrollTarget?: Element, showMicMessage?: boolean, messages?: string[], holdMs?: number, onFail?: function(string):void}} opts
 		 */
 		function runPhraseCompletionFlow(txt, micUsed, opts) {
 			opts = opts || {};
 			var showMicMessage = opts.showMicMessage !== false;
 			var onFail = typeof opts.onFail === 'function' ? opts.onFail : function () {};
 			var scrollTarget = opts.scrollTarget || completionMsgEl || phase2;
+			/* Pausa di lettura dei messaggi prima di scrivere la riga di storia. */
+			var holdMs = typeof opts.holdMs === 'number' ? opts.holdMs : 3000;
+
+			/* Modalità che non validano il testo usano messaggi propri. */
+			var messages = Array.isArray(opts.messages)
+				? opts.messages
+				: [
+					i18n.bravoCorrect || '',
+					i18n.phraseCompletePoints || '',
+					showMicMessage
+						? (micUsed ? (i18n.micUsedPoint || '') : (i18n.micUsedNoPoint || ''))
+						: '',
+					i18n.storyContinue || ''
+				];
 
 			/* Avvia AJAX subito in parallelo con i messaggi. */
 			var ajaxPromise = new Promise(function (resolve) {
@@ -2824,26 +2858,20 @@
 				completionMsgEl.classList.add('llm-phrase-game__message-phase2--success');
 			}
 
-			return smoothScrollIntoCenter(scrollTarget).then(function () {
-				return appendMessagePhase2Typewriter(i18n.bravoCorrect || '');
-			}).then(function () {
-				return sleepMs(300);
-			}).then(function () {
-				return appendMessagePhase2Typewriter(i18n.phraseCompletePoints || '');
-			}).then(function () {
-				return sleepMs(300);
-			}).then(function () {
-				if (!showMicMessage) {
-					return;
-				}
-				var micMsg = micUsed ? (i18n.micUsedPoint || '') : (i18n.micUsedNoPoint || '');
-				return appendMessagePhase2Typewriter(micMsg);
-			}).then(function () {
-				return sleepMs(300);
-			}).then(function () {
-				return appendMessagePhase2Typewriter(i18n.storyContinue || '');
-			}).then(function () {
-				return Promise.all([ajaxPromise, sleepMs(3000)]);
+			/* Ogni voce è una stringa, oppure {text, html} per righe che contengono markup. */
+			var typed = messages.reduce(function (chain, msg, ix) {
+				var isObj = !!msg && 'object' === typeof msg;
+				var text = isObj ? (msg.text || '') : (msg || '');
+				var asHtml = isObj && !!msg.html;
+				return chain.then(function () {
+					return ix > 0 ? sleepMs(300) : null;
+				}).then(function () {
+					return text ? appendMessagePhase2Typewriter(text, asHtml) : null;
+				});
+			}, smoothScrollIntoCenter(scrollTarget));
+
+			return typed.then(function () {
+				return Promise.all([ajaxPromise, sleepMs(holdMs)]);
 			})
 				.then(function (pair) {
 					var json = pair && pair[0];
@@ -2935,6 +2963,32 @@
 			});
 		}
 
+		/** Modalità "Read and go fast": nessun controllo, si avanza anche a campo vuoto. */
+		function handleReadGoFastSubmit() {
+			setMessage('');
+			setMessagePhase2('', '');
+			btn1.disabled = true;
+			input1.readOnly = true;
+			setNotesOpen(false);
+
+			var p = phrases[phraseIx];
+			var targetRef = p && p.target != null ? String(p.target) : '';
+
+			runPhraseCompletionFlow((input1.value || '').trim(), false, {
+				messages: [
+					targetRef ? (i18n.readGoFastTarget || '') : '',
+					{ text: targetRef, html: true },
+					i18n.readGoFastComplete || i18n.phraseCompletePoints || ''
+				],
+				holdMs: 1200,
+				scrollTarget: completionMsgEl || phase1,
+				onFail: function () {
+					btn1.disabled = false;
+					input1.readOnly = false;
+				}
+			});
+		}
+
 		btn2.addEventListener('click', function () {
 			stopSpeech();
 			cancelTts();
@@ -2969,13 +3023,17 @@
 			});
 		});
 
-	if (isResolveGo && notesWrap && notesPanel && analysisEl) {
+	if (isSinglePhase && notesWrap && notesPanel && analysisEl) {
 		notesWrap.hidden = false;
 		notesPanel.appendChild(analysisEl);
 	}
 
+	if (isReadGoFast && btn1 && i18n.readGoFastNext) {
+		btn1.textContent = i18n.readGoFastNext;
+	}
+
 	var startResume =
-		!isResolveGo &&
+		!isSinglePhase &&
 		parseInt(cfg.savedStep, 10) === 2 && cfg.resumeAnalysis;
 	introReady.then(function () {
 		if (pendingStoryIntroTypewriter && cardEl) {
