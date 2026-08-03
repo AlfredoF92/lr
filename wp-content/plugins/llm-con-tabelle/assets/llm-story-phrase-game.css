@@ -1257,6 +1257,13 @@
 	margin-top: 1.25rem;
 }
 
+/* Single-phase: appunti sopra Continua / Vai alla prossima frase */
+.llm-phrase-game--single-phase .llm-phrase-game__continue-block--1 > .llm-phrase-game__notes {
+	margin-top: 0;
+	margin-bottom: 2rem;
+	width: 100%;
+}
+
 .llm-phrase-game__notes-panel[hidden] {
 	display: none;
 }

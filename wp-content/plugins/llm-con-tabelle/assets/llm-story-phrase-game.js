@@ -3500,6 +3500,10 @@
 	if (isSinglePhase && notesWrap && notesPanel && analysisEl) {
 		notesWrap.hidden = false;
 		notesPanel.appendChild(analysisEl);
+		var continueBlock1 = qs(root, '.llm-phrase-game__continue-block--1');
+		if (continueBlock1) {
+			continueBlock1.insertBefore(notesWrap, continueBlock1.firstChild);
+		}
 	}
 
 	if (isReadGoFast && btn1 && i18n.readGoFastNext) {
