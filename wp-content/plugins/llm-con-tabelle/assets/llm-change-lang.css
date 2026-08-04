@@ -1,0 +1,53 @@
+/* [llm_change_lang] — testo + bandiera + bottone minimale */
+
+.llm-change-lang {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55rem 0.75rem;
+	font-family: inherit;
+	font-size: inherit;
+	line-height: 1.4;
+	color: inherit;
+}
+
+.llm-change-lang__text {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-weight: 500;
+}
+
+.llm-change-lang__flag {
+	font-size: 1.1em;
+	line-height: 1;
+}
+
+.llm-change-lang__msg {
+	color: inherit;
+}
+
+.llm-change-lang__btn {
+	display: inline-flex;
+	align-items: center;
+	margin: 0;
+	padding: 0.2rem 0.55rem;
+	border: 1px solid #c0c0c4;
+	border-radius: 4px;
+	background: transparent;
+	color: #5a5a5e !important;
+	font-family: inherit;
+	font-size: 0.8em;
+	font-weight: 600;
+	line-height: 1.3;
+	text-decoration: none !important;
+	cursor: pointer;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.llm-change-lang__btn:hover,
+.llm-change-lang__btn:focus-visible {
+	color: #1a1a1a !important;
+	border-color: #6a6a6e;
+	outline: none;
+}
