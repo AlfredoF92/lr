@@ -1,15 +1,15 @@
 <?php
 /**
- * Shortcode [llm_lang_cards] — sezione "Se conosci X, impara:" con card per coppia linguistica.
+ * Shortcode [llm_lang_cards] — scelta lingua conosciuta + lingua da imparare.
  *
  * Funzionamento:
- * - Mostra un <select> con le lingue interfaccia + pulsante Conferma per cambiare la lingua conosciuta.
- * - Sotto, una griglia di card (una per ogni lingua imparabile != lingua conosciuta).
- * - Card con coppia configurata in llm_home_redirect_pairs → bottone con form POST che:
- *     1. Salva _llm_interface_lang (lingua conosciuta) + _llm_learning_lang (lingua target)
- *     2. Salva entrambe in cookie per 30 giorni (ospiti e loggati)
- *     3. Fa redirect alla pagina della coppia
- * - Card senza coppia configurata → badge "Coming Soon".
+ * - Passo 1: chip/bandiere per la lingua che conosci (niente select).
+ * - Passo 2: card per la lingua da imparare.
+ * - Card con coppia configurata in llm_home_redirect_pairs → POST che:
+ *     1. Salva _llm_interface_lang + _llm_learning_lang
+ *     2. Salva cookie 30 giorni
+ *     3. Redirect alla pagina della coppia
+ * - Card senza coppia → badge "Coming Soon".
  *
  * @package LLM_Tabelle
  */
@@ -162,110 +162,118 @@ class LLM_Lang_Cards_Shortcode {
 		$all_langs  = LLM_Languages::get_codes();
 		$pairs      = (array) get_option( LLM_Home_Redirect::OPT_PAIRS, array() );
 
-		$section_title = self::section_title( $known_lang );
-		$subtitle      = trim( (string) $atts['subtitle'] );
-		if ( '' === $subtitle ) {
-			$subtitle = self::section_subtitle( $known_lang );
+		/* Attributo legacy: se passato, sostituisce il sottotitolo della sezione "imparare". */
+		$learn_subtitle = trim( (string) $atts['subtitle'] );
+		if ( '' === $learn_subtitle ) {
+			$learn_subtitle = self::learn_subtitle( $known_lang );
 		}
 
 		ob_start();
 		?>
 		<div id="<?php echo esc_attr( self::SECTION_ANCHOR ); ?>" class="llm-lang-cards" data-known="<?php echo esc_attr( $known_lang ); ?>">
 
-			<?php /* ---- Selettore lingua conosciuta ---- */ ?>
-			<form class="llm-lang-cards__form" method="post" action="">
-				<?php wp_nonce_field( self::NONCE_ACTION_LANG, self::NONCE_FIELD_LANG ); ?>
-				<input type="hidden" name="<?php echo esc_attr( self::POST_FLAG_LANG ); ?>" value="1" />
-				<?php echo wp_referer_field( false ); ?>
-
-				<div class="llm-lang-cards__form-row">
-					<label class="llm-lang-cards__form-label" for="llm-known-lang-select">
-						<?php echo esc_html( self::label_select( $known_lang ) ); ?>
-					</label>
-					<div class="llm-lang-cards__form-controls">
-						<select
-							id="llm-known-lang-select"
-							name="llm_known_lang"
-							class="llm-lang-cards__select"
-						>
-							<?php foreach ( $all_langs as $code => $label ) : ?>
-								<option
-									value="<?php echo esc_attr( $code ); ?>"
-									<?php selected( $code, $known_lang ); ?>
-								>
-									<?php echo esc_html( self::lang_native_name( $code ) ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-						<button type="submit" class="llm-lang-cards__btn-confirm">
-							<?php echo esc_html( self::label_confirm( $known_lang ) ); ?>
-						</button>
-					</div>
+			<?php /* ---- Step 1: lingua che conosci ---- */ ?>
+			<section class="llm-lang-cards__step llm-lang-cards__step--known" aria-labelledby="llm-lang-known-title">
+				<div class="llm-lang-cards__header">
+					<p class="llm-lang-cards__step-label"><?php echo esc_html( self::step_label( $known_lang, 1 ) ); ?></p>
+					<h2 id="llm-lang-known-title" class="llm-lang-cards__title"><?php echo esc_html( self::known_title( $known_lang ) ); ?></h2>
+					<p class="llm-lang-cards__subtitle"><?php echo esc_html( self::known_subtitle( $known_lang ) ); ?></p>
 				</div>
-			</form>
 
-			<?php /* ---- Titolo sezione ---- */ ?>
-			<div class="llm-lang-cards__header">
-				<h2 class="llm-lang-cards__title"><?php echo esc_html( $section_title ); ?></h2>
-				<?php if ( '' !== $subtitle ) : ?>
-					<p class="llm-lang-cards__subtitle"><?php echo esc_html( $subtitle ); ?></p>
-				<?php endif; ?>
-			</div>
-
-			<?php /* ---- Griglia card ---- */ ?>
-			<div class="llm-lang-cards__grid">
-				<?php
-				foreach ( $all_langs as $target_code => $target_label ) {
-					if ( $target_code === $known_lang ) {
-						continue;
-					}
-
-					$pair_key = $known_lang . '_' . $target_code;
-					$page_id  = isset( $pairs[ $pair_key ] ) ? absint( $pairs[ $pair_key ] ) : 0;
-
-					$pair_url = '';
-					if ( $page_id > 0 ) {
-						$page = get_post( $page_id );
-						if ( $page && 'publish' === $page->post_status ) {
-							$pair_url = (string) get_permalink( $page_id );
+				<div class="llm-lang-cards__pills" role="list">
+					<?php foreach ( $all_langs as $code => $label ) : ?>
+						<?php
+						$is_active = ( $code === $known_lang );
+						$pill_class = 'llm-lang-cards__pill';
+						if ( $is_active ) {
+							$pill_class .= ' llm-lang-cards__pill--active';
 						}
-					}
-
-					$card_title = self::card_title( $known_lang, $target_code );
-					$card_desc  = self::card_desc( $known_lang, $target_code );
-					$btn_label  = self::card_btn( $known_lang, $target_code );
-					$available  = '' !== $pair_url;
-					?>
-					<div class="llm-lang-cards__card<?php echo $available ? '' : ' llm-lang-cards__card--soon'; ?>">
-						<div class="llm-lang-cards__card-flag">
-							<?php echo self::lang_flag( $target_code ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico. ?>
-						</div>
-						<h3 class="llm-lang-cards__card-title"><?php echo esc_html( $card_title ); ?></h3>
-						<p class="llm-lang-cards__card-desc"><?php echo esc_html( $card_desc ); ?></p>
-						<div class="llm-lang-cards__card-footer">
-							<?php if ( $available ) : ?>
-								<form method="post" action="">
-									<?php wp_nonce_field( self::NONCE_ACTION_CARD, self::NONCE_FIELD_CARD ); ?>
-									<input type="hidden" name="<?php echo esc_attr( self::POST_FLAG_CARD ); ?>" value="1" />
-									<input type="hidden" name="llm_known_lang"    value="<?php echo esc_attr( $known_lang ); ?>" />
-									<input type="hidden" name="llm_learning_lang" value="<?php echo esc_attr( $target_code ); ?>" />
-									<input type="hidden" name="llm_card_redirect" value="<?php echo esc_url( $pair_url ); ?>" />
-									<button type="submit" class="llm-lang-cards__card-btn">
-										<?php echo esc_html( $btn_label ); ?>
-										<span class="llm-lang-cards__card-arrow" aria-hidden="true">→</span>
+						?>
+						<div class="llm-lang-cards__pill-wrap" role="listitem">
+							<?php if ( $is_active ) : ?>
+								<span class="<?php echo esc_attr( $pill_class ); ?>" aria-current="true">
+									<span class="llm-lang-cards__pill-flag" aria-hidden="true"><?php echo esc_html( self::flag_emoji( $code ) ); ?></span>
+									<span class="llm-lang-cards__pill-name"><?php echo esc_html( self::lang_native_name( $code ) ); ?></span>
+								</span>
+							<?php else : ?>
+								<form method="post" action="" class="llm-lang-cards__pill-form">
+									<?php wp_nonce_field( self::NONCE_ACTION_LANG, self::NONCE_FIELD_LANG ); ?>
+									<input type="hidden" name="<?php echo esc_attr( self::POST_FLAG_LANG ); ?>" value="1" />
+									<input type="hidden" name="llm_known_lang" value="<?php echo esc_attr( $code ); ?>" />
+									<?php echo wp_referer_field( false ); ?>
+									<button type="submit" class="<?php echo esc_attr( $pill_class ); ?>">
+										<span class="llm-lang-cards__pill-flag" aria-hidden="true"><?php echo esc_html( self::flag_emoji( $code ) ); ?></span>
+										<span class="llm-lang-cards__pill-name"><?php echo esc_html( self::lang_native_name( $code ) ); ?></span>
 									</button>
 								</form>
-							<?php else : ?>
-								<span class="llm-lang-cards__card-soon-badge">
-									<?php echo esc_html( self::label_coming_soon( $known_lang ) ); ?>
-								</span>
 							<?php endif; ?>
 						</div>
-					</div>
+					<?php endforeach; ?>
+				</div>
+			</section>
+
+			<?php /* ---- Step 2: lingua da imparare ---- */ ?>
+			<section class="llm-lang-cards__step llm-lang-cards__step--learn" aria-labelledby="llm-lang-learn-title">
+				<div class="llm-lang-cards__header">
+					<p class="llm-lang-cards__step-label"><?php echo esc_html( self::step_label( $known_lang, 2 ) ); ?></p>
+					<h2 id="llm-lang-learn-title" class="llm-lang-cards__title"><?php echo esc_html( self::learn_title( $known_lang ) ); ?></h2>
+					<p class="llm-lang-cards__subtitle"><?php echo esc_html( $learn_subtitle ); ?></p>
+				</div>
+
+				<div class="llm-lang-cards__grid">
 					<?php
-				}
-				?>
-			</div>
+					foreach ( $all_langs as $target_code => $target_label ) {
+						if ( $target_code === $known_lang ) {
+							continue;
+						}
+
+						$pair_key = $known_lang . '_' . $target_code;
+						$page_id  = isset( $pairs[ $pair_key ] ) ? absint( $pairs[ $pair_key ] ) : 0;
+
+						$pair_url = '';
+						if ( $page_id > 0 ) {
+							$page = get_post( $page_id );
+							if ( $page && 'publish' === $page->post_status ) {
+								$pair_url = (string) get_permalink( $page_id );
+							}
+						}
+
+						$card_title = self::card_title( $known_lang, $target_code );
+						$card_desc  = self::card_desc( $known_lang, $target_code );
+						$btn_label  = self::card_btn( $known_lang, $target_code );
+						$available  = '' !== $pair_url;
+						?>
+						<div class="llm-lang-cards__card<?php echo $available ? '' : ' llm-lang-cards__card--soon'; ?>">
+							<div class="llm-lang-cards__card-flag">
+								<?php echo self::lang_flag( $target_code ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- emoji escapato. ?>
+							</div>
+							<h3 class="llm-lang-cards__card-title"><?php echo esc_html( $card_title ); ?></h3>
+							<p class="llm-lang-cards__card-desc"><?php echo esc_html( $card_desc ); ?></p>
+							<div class="llm-lang-cards__card-footer">
+								<?php if ( $available ) : ?>
+									<form method="post" action="">
+										<?php wp_nonce_field( self::NONCE_ACTION_CARD, self::NONCE_FIELD_CARD ); ?>
+										<input type="hidden" name="<?php echo esc_attr( self::POST_FLAG_CARD ); ?>" value="1" />
+										<input type="hidden" name="llm_known_lang" value="<?php echo esc_attr( $known_lang ); ?>" />
+										<input type="hidden" name="llm_learning_lang" value="<?php echo esc_attr( $target_code ); ?>" />
+										<input type="hidden" name="llm_card_redirect" value="<?php echo esc_url( $pair_url ); ?>" />
+										<button type="submit" class="llm-lang-cards__card-btn">
+											<?php echo esc_html( $btn_label ); ?>
+											<span class="llm-lang-cards__card-arrow" aria-hidden="true">→</span>
+										</button>
+									</form>
+								<?php else : ?>
+									<span class="llm-lang-cards__card-soon-badge">
+										<?php echo esc_html( self::label_coming_soon( $known_lang ) ); ?>
+									</span>
+								<?php endif; ?>
+							</div>
+						</div>
+						<?php
+					}
+					?>
+				</div>
+			</section>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -346,36 +354,75 @@ class LLM_Lang_Cards_Shortcode {
 	/* ------------------------------------------------------------------ */
 
 	private static function lang_flag( $code ) {
+		$emoji = self::flag_emoji( $code );
+		return '<span class="llm-lang-cards__flag" aria-hidden="true">' . esc_html( $emoji ) . '</span>';
+	}
+
+	/**
+	 * @param string $code Codice lingua.
+	 * @return string
+	 */
+	private static function flag_emoji( $code ) {
 		$flags = array(
 			'it' => '🇮🇹',
 			'en' => '🇬🇧',
 			'pl' => '🇵🇱',
 			'es' => '🇪🇸',
 		);
-		$emoji = $flags[ $code ] ?? '';
-		return '<span class="llm-lang-cards__flag" aria-hidden="true">' . esc_html( $emoji ) . '</span>';
+		return $flags[ $code ] ?? '';
 	}
 
 	/* ------------------------------------------------------------------ */
 	/* Traduzioni UI                                                        */
 	/* ------------------------------------------------------------------ */
 
-	private static function label_select( $lang ) {
+	private static function step_label( $lang, $n ) {
 		$t = array(
-			'it' => 'Lingua che conosci:',
-			'en' => 'Language you know:',
-			'pl' => 'Język, który znasz:',
-			'es' => 'Idioma que conoces:',
+			'it' => 'Passo %d',
+			'en' => 'Step %d',
+			'pl' => 'Krok %d',
+			'es' => 'Paso %d',
+		);
+		$tpl = $t[ $lang ] ?? $t['it'];
+		return sprintf( $tpl, (int) $n );
+	}
+
+	private static function known_title( $lang ) {
+		$t = array(
+			'it' => 'Lingua che conosci',
+			'en' => 'Language you know',
+			'pl' => 'Język, który znasz',
+			'es' => 'Idioma que conoces',
 		);
 		return $t[ $lang ] ?? $t['it'];
 	}
 
-	private static function label_confirm( $lang ) {
+	private static function known_subtitle( $lang ) {
 		$t = array(
-			'it' => 'Conferma',
-			'en' => 'Confirm',
-			'pl' => 'Potwierdź',
-			'es' => 'Confirmar',
+			'it' => 'Tocca la lingua che parli già. L’interfaccia e le spiegazioni saranno in questa lingua.',
+			'en' => 'Tap the language you already speak. The interface and explanations will use this language.',
+			'pl' => 'Wybierz język, którym już mówisz. Interfejs i wyjaśnienia będą w tym języku.',
+			'es' => 'Toca el idioma que ya hablas. La interfaz y las explicaciones estarán en este idioma.',
+		);
+		return $t[ $lang ] ?? $t['it'];
+	}
+
+	private static function learn_title( $lang ) {
+		$t = array(
+			'it' => 'Lingua che vuoi imparare',
+			'en' => 'Language you want to learn',
+			'pl' => 'Język, którego chcesz się uczyć',
+			'es' => 'Idioma que quieres aprender',
+		);
+		return $t[ $lang ] ?? $t['it'];
+	}
+
+	private static function learn_subtitle( $lang ) {
+		$t = array(
+			'it' => 'Scegli cosa studiare: ti portiamo alle storie di quella lingua.',
+			'en' => 'Choose what to study: we will take you to the stories for that language.',
+			'pl' => 'Wybierz, czego chcesz się uczyć: przeniesiemy Cię do historii w tym języku.',
+			'es' => 'Elige qué estudiar: te llevamos a las historias de ese idioma.',
 		);
 		return $t[ $lang ] ?? $t['it'];
 	}
@@ -390,24 +437,22 @@ class LLM_Lang_Cards_Shortcode {
 		return $t[ $lang ] ?? $t['it'];
 	}
 
+	/* Alias legacy (filtri / riferimenti esterni). */
 	private static function section_title( $known ) {
-		$t = array(
-			'it' => 'Se conosci l\'italiano, impara:',
-			'en' => 'If you know English, learn:',
-			'pl' => 'Jeśli znasz polski, ucz się:',
-			'es' => 'Si conoces el español, aprende:',
-		);
-		return $t[ $known ] ?? ( 'Se conosci ' . self::lang_native_name( $known ) . ', impara:' );
+		return self::learn_title( $known );
 	}
 
 	private static function section_subtitle( $known ) {
-		$t = array(
-			'it' => 'Scegli la lingua che vuoi imparare.',
-			'en' => 'Choose the language you want to learn.',
-			'pl' => 'Wybierz język, którego chcesz się uczyć.',
-			'es' => 'Elige el idioma que quieres aprender.',
-		);
-		return $t[ $known ] ?? $t['it'];
+		return self::learn_subtitle( $known );
+	}
+
+	private static function label_select( $lang ) {
+		return self::known_title( $lang );
+	}
+
+	private static function label_confirm( $lang ) {
+		unset( $lang );
+		return '';
 	}
 
 	/* ------------------------------------------------------------------ */
