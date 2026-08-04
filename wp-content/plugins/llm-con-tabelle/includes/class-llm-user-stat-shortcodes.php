@@ -42,61 +42,22 @@ class LLM_User_Stat_Shortcodes {
 	}
 
 	/**
-	 * @param string $path Path.
+	 * @param array<string, string> $atts Attributi shortcode (non usati per il link).
+	 * @param int                   $value Valore numerico.
+	 * @param string                $label Etichetta con due punti (es. "Coin:" / "Bravi ricevuti:"), tradotta.
+	 * @param string                $icon_svg Markup SVG da LLM_Header_UI_Icons.
 	 * @return string
 	 */
-	private static function normalize_path( $path ) {
-		$path = trim( $path );
-		if ( $path === '' ) {
-			return '/';
-		}
-		if ( $path[0] !== '/' ) {
-			return '/' . $path;
-		}
-		return $path;
-	}
-
-	/**
-	 * URL per visitatori non loggati (default: home).
-	 *
-	 * @param array<string, string> $atts Attributi shortcode.
-	 * @return string
-	 */
-	private static function guest_url( $atts ) {
-		$path = self::normalize_path( isset( $atts['guest_path'] ) ? (string) $atts['guest_path'] : '/' );
-		return esc_url( home_url( $path ) );
-	}
-
-	/**
-	 * @param string               $target_url URL destinazione (coin/frasi/bravi).
-	 * @param array<string, string> $atts Attributi shortcode.
-	 * @param int                  $value Valore numerico.
-	 * @param string               $label Etichetta con due punti (es. "Coin:" / "Bravi ricevuti:"), tradotta.
-	 * @param string               $icon_svg Markup SVG da LLM_Header_UI_Icons.
-	 * @return string
-	 */
-	private static function render_number_chip( $target_url, $atts, $value, $label, $icon_svg ) {
-		if ( ! is_user_logged_in() ) {
-			$n        = 0;
-			$label    = trim( (string) $label );
-			$aria_txt = trim( $label . ' ' . (string) $n );
-			return sprintf(
-				'<span class="llm-stat-chip-wrap"><a class="llm-stat-chip llm-stat-chip--guest llm-stat-chip--kv" href="%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span><span class="llm-stat-chip__body"><span class="llm-stat-chip__label">%4$s</span><span class="llm-stat-chip__value">%5$d</span></span></a></span>',
-				self::guest_url( $atts ),
-				esc_attr( $aria_txt ),
-				$icon_svg, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
-				esc_html( $label ),
-				$n
-			);
-		}
-
-		$n        = max( 0, (int) $value );
+	private static function render_number_chip( $atts, $value, $label, $icon_svg ) {
+		unset( $atts );
+		$n        = is_user_logged_in() ? max( 0, (int) $value ) : 0;
 		$label    = trim( (string) $label );
 		$aria_txt = trim( $label . ' ' . (string) $n );
+		$guest    = is_user_logged_in() ? '' : ' llm-stat-chip--guest';
 
 		return sprintf(
-			'<span class="llm-stat-chip-wrap"><a class="llm-stat-chip llm-stat-chip--kv" href="%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span><span class="llm-stat-chip__body"><span class="llm-stat-chip__label">%4$s</span><span class="llm-stat-chip__value">%5$d</span></span></a></span>',
-			esc_url( $target_url ),
+			'<span class="llm-stat-chip-wrap"><span class="llm-stat-chip llm-stat-chip--kv llm-stat-chip--static%1$s" aria-label="%2$s"><span class="llm-stat-chip__icon">%3$s</span><span class="llm-stat-chip__body"><span class="llm-stat-chip__label">%4$s</span><span class="llm-stat-chip__value">%5$d</span></span></span></span>',
+			esc_attr( $guest ),
 			esc_attr( $aria_txt ),
 			$icon_svg, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
 			esc_html( $label ),
@@ -110,19 +71,11 @@ class LLM_User_Stat_Shortcodes {
 	 */
 	public static function render_coins( $atts ) {
 		self::enqueue_style();
-		$atts = shortcode_atts(
-			array(
-				'coin_path'  => '/coin',
-				'guest_path' => '/',
-			),
-			$atts,
-			self::COINS
-		);
-		$target = esc_url( home_url( self::normalize_path( (string) $atts['coin_path'] ) ) );
-		$uid    = get_current_user_id();
-		$bal = $uid ? LLM_User_Stats::get_balance( $uid ) : 0;
+		$atts = shortcode_atts( array(), $atts, self::COINS );
+		$uid  = get_current_user_id();
+		$bal  = $uid ? LLM_User_Stats::get_balance( $uid ) : 0;
 
-		return self::render_number_chip( $target, $atts, $bal, 'Points:', LLM_Header_UI_Icons::coin() );
+		return self::render_number_chip( $atts, $bal, 'Points:', LLM_Header_UI_Icons::coin() );
 	}
 
 	/**
@@ -131,19 +84,11 @@ class LLM_User_Stat_Shortcodes {
 	 */
 	public static function render_phrases( $atts ) {
 		self::enqueue_style();
-		$atts = shortcode_atts(
-			array(
-				'phrases_path' => '/frasi',
-				'guest_path'   => '/',
-			),
-			$atts,
-			self::PHRASES
-		);
-		$target = esc_url( home_url( self::normalize_path( (string) $atts['phrases_path'] ) ) );
-		$uid    = get_current_user_id();
-		$n = $uid ? LLM_User_Stats::count_completed_phrases( $uid ) : 0;
+		$atts = shortcode_atts( array(), $atts, self::PHRASES );
+		$uid  = get_current_user_id();
+		$n    = $uid ? LLM_User_Stats::count_completed_phrases( $uid ) : 0;
 
-		return self::render_number_chip( $target, $atts, $n, 'Frasi completate:', LLM_Header_UI_Icons::phrases() );
+		return self::render_number_chip( $atts, $n, 'Frasi completate:', LLM_Header_UI_Icons::phrases() );
 	}
 
 	/**
@@ -152,19 +97,11 @@ class LLM_User_Stat_Shortcodes {
 	 */
 	public static function render_bravi( $atts ) {
 		self::enqueue_style();
-		$atts = shortcode_atts(
-			array(
-				'bravi_path' => '/bravi',
-				'guest_path' => '/',
-			),
-			$atts,
-			self::BRAVI
-		);
-		$target = esc_url( home_url( self::normalize_path( (string) $atts['bravi_path'] ) ) );
-		$uid    = get_current_user_id();
-		$n = $uid ? LLM_Community::count_bravi_received( $uid ) : 0;
+		$atts = shortcode_atts( array(), $atts, self::BRAVI );
+		$uid  = get_current_user_id();
+		$n    = $uid ? LLM_Community::count_bravi_received( $uid ) : 0;
 
-		return self::render_number_chip( $target, $atts, $n, 'Likes:', LLM_Header_UI_Icons::bravo() );
+		return self::render_number_chip( $atts, $n, 'Likes:', LLM_Header_UI_Icons::bravo() );
 	}
 
 	/**
