@@ -96,11 +96,17 @@ class LLM_Header_User_Shortcode {
 			$label = sprintf( $tpl, $name );
 		}
 
+		$badge = '';
+		if ( current_user_can( 'manage_options' ) ) {
+			$badge = '<span class="llm-header-user__badge" title="Administrator">ADMIN</span>';
+		}
+
 		return sprintf(
-			'<span class="llm-header-user"><a class="llm-header-user__account" href="%1$s"><span class="llm-header-user__icon">%3$s</span><span class="llm-header-user__text">%2$s</span></a></span>',
+			'<span class="llm-header-user"><a class="llm-header-user__account" href="%1$s"><span class="llm-header-user__icon">%3$s</span><span class="llm-header-user__text">%2$s</span>%4$s</a></span>',
 			$account_url,
 			esc_html( $label ),
-			LLM_Header_UI_Icons::user() // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
+			LLM_Header_UI_Icons::user(), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG statico.
+			$badge // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup statico controllato.
 		);
 	}
 
