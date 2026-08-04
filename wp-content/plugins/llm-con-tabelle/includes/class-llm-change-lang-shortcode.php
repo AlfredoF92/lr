@@ -177,10 +177,10 @@ class LLM_Change_Lang_Shortcode {
 
 		$name = self::learning_name( $learning, $ui_lang );
 		$tpl  = array(
-			'it' => 'Stai imparando %s',
-			'en' => 'You are learning %s',
-			'pl' => 'Uczysz się: %s',
-			'es' => 'Estás aprendiendo %s',
+			'it' => 'Storie per imparare %s',
+			'en' => 'Stories to learn %s',
+			'pl' => 'Historie, aby uczyć się: %s',
+			'es' => 'Historias para aprender %s',
 		);
 		$template = $tpl[ $ui_lang ] ?? $tpl['it'];
 		return sprintf( $template, $name );
