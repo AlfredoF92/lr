@@ -558,6 +558,7 @@ class LLM_Story_Phrase_Game {
 			'resolveGoPrompt'  => LLM_Phrase_Game_I18n::get( 'resolve_go_prompt' ),
 			'notesToggleShow'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_show' ),
 			'notesToggleHide'  => LLM_Phrase_Game_I18n::get( 'notes_toggle_hide' ),
+			'continueToNotes'  => LLM_Phrase_Game_I18n::get( 'continue_to_notes' ),
 			'resolveGoFail'    => LLM_Phrase_Game_I18n::get( 'resolve_go_fail' ),
 			'readGoFastPrompt'   => LLM_Phrase_Game_I18n::get( 'read_go_fast_prompt' ),
 			'readGoFastNext'     => LLM_Phrase_Game_I18n::get( 'read_go_fast_next' ),

@@ -3613,6 +3613,10 @@
 		}
 	}
 
+	if (!isSinglePhase && btn1 && i18n.continueToNotes) {
+		btn1.textContent = i18n.continueToNotes;
+	}
+
 	if (isReadGoFast && btn1 && i18n.readGoFastNext) {
 		btn1.textContent = i18n.readGoFastNext;
 	}
