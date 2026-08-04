@@ -242,14 +242,11 @@ class LLM_Frontend_Auth {
 	}
 
 	/**
-	 * Reindirizza wp-login.php alla pagina /login solo per utenti frontend.
-	 * Accesso wp-admin / wp-login con redirect_to admin resta disponibile.
+	 * Reindirizza wp-login.php (accesso) alla pagina interna /login.
+	 * Mantiene redirect_to (anche verso wp-admin) così dopo il login admin torna in backend.
+	 * logout / reset password restano su wp-login.php.
 	 */
 	public static function maybe_redirect_wp_login() {
-		if ( ! LLM_Redirects::enabled() ) {
-			return;
-		}
-
 		if ( is_admin() ) {
 			return;
 		}
@@ -259,7 +256,7 @@ class LLM_Frontend_Auth {
 			return;
 		}
 
-		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+		$action  = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
 		$allowed = array(
 			'logout',
 			'lostpassword',
@@ -275,16 +272,26 @@ class LLM_Frontend_Auth {
 		}
 
 		$redirect_to = isset( $_REQUEST['redirect_to'] ) ? wp_unslash( $_REQUEST['redirect_to'] ) : '';
-		if ( is_string( $redirect_to ) && self::url_targets_wp_admin( $redirect_to ) ) {
-			return;
-		}
+		$redirect_to = is_string( $redirect_to ) ? $redirect_to : '';
 
 		if ( is_user_logged_in() ) {
+			if ( current_user_can( 'manage_options' ) ) {
+				$dest = ( '' !== $redirect_to && self::url_targets_wp_admin( $redirect_to ) )
+					? $redirect_to
+					: admin_url();
+				wp_safe_redirect( $dest );
+				exit;
+			}
 			wp_safe_redirect( self::get_language_home_url( get_current_user_id() ) );
 			exit;
 		}
 
-		wp_safe_redirect( self::login_url() );
+		$login_url = self::login_url();
+		if ( '' !== $redirect_to && self::is_safe_internal_url( $redirect_to ) ) {
+			$login_url = add_query_arg( 'redirect_to', $redirect_to, $login_url );
+		}
+
+		wp_safe_redirect( $login_url );
 		exit;
 	}
 

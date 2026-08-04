@@ -113,11 +113,14 @@ class LLM_Login_Form_Shortcode {
 			return;
 		}
 
-		wp_safe_redirect(
-			LLM_Redirects::enabled()
-				? self::redirect_url_for_user( $user )
-				: ( wp_get_referer() ? wp_get_referer() : home_url( '/' ) )
-		);
+		$requested = isset( $_POST['redirect_to'] ) ? (string) wp_unslash( $_POST['redirect_to'] ) : '';
+		$default   = self::redirect_url_for_user( $user );
+		$dest      = class_exists( 'LLM_Frontend_Auth' )
+			? LLM_Frontend_Auth::login_redirect( $default, $requested, $user )
+			: $default;
+		$dest = wp_validate_redirect( $dest, $default );
+
+		wp_safe_redirect( $dest );
 		exit;
 	}
 
@@ -159,6 +162,14 @@ class LLM_Login_Form_Shortcode {
 				$custom_path = '/' . $custom_path;
 			}
 			$redirect_hidden = '<input type="hidden" name="redirect_to" value="' . esc_attr( home_url( $custom_path ) ) . '" />';
+		} elseif ( isset( $_GET['redirect_to'] ) ) {
+			$from_query = (string) wp_unslash( $_GET['redirect_to'] );
+			if ( '' !== $from_query && class_exists( 'LLM_Frontend_Auth' ) ) {
+				$validated = wp_validate_redirect( $from_query, false );
+				if ( $validated ) {
+					$redirect_hidden = '<input type="hidden" name="redirect_to" value="' . esc_attr( $validated ) . '" />';
+				}
+			}
 		}
 
 		ob_start();
